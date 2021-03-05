@@ -217,20 +217,19 @@ static int get_api_err(const struct api_error *errors, const char *buf)
  * For doing request back-off, following the Fibonaci Sequence
  * (skipping 0)
  */
-static int next_fib(int last)
+static int next_fib(int last, int *state)
 {
-	static int F0;
 	int Fn;
 
 	if (last == -1)
-		last = F0 = 0;
+		last = *state = 0;
 	else if (last == 0)
 		return 1;
 	else
-		Fn = F0 + last;
+		Fn = *state + last;
 
-	F0 = last;
-	if (F0 == 0)
+	*state = last;
+	if (*state == 0)
 		return 1;
 
 	return Fn;
@@ -766,6 +765,7 @@ static int get_calculation_meta(const char *cid)
 	char *jbuf;
 	int ret = -1;
 	int err;
+	int state;
 	int fib_sleep = -1;
 
 again:
@@ -777,7 +777,7 @@ again:
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	} else if (err == MTD_ERR_REQUEST) {
-		fib_sleep = next_fib(fib_sleep);
+		fib_sleep = next_fib(fib_sleep, &state);
 		printf("\r  Trying to get calculation metadata again in "
 		       TC_BOLD "%d" TC_RST " second(s)", fib_sleep);
 		fflush(stdout);
