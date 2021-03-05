@@ -1,0 +1,150 @@
+# itsa - Income Tax Self-Assessment
+
+itsa is a program for interacting with the UK's HMRC [Make Tax Digital](https://developer.service.hmrc.gov.uk/api-documentation) APIs.
+
+It makes use of [libmtdac](https://github.com/ac000/libmtdac)
+
+This is developed under Linux and hasn't been tested on anything else.
+
+# Status
+
+[2021-03-05] Started the process of obtaining production credentials.
+
+itsa currently supports the following actions
+
+  - List Self-Employment period obligations
+  - Create and update Self-Employment periods
+  - Create/Update a Self-Employment annual summary
+  - Submit an End-of-Year Statement
+  - Crystallise a tax return
+  - List/view tax calculations
+  - View an End-of-Year tax/nics estimate
+
+Currently it gets the required accounting data from a GNUCash SQLite backed
+file.
+
+# Building & Installing
+
+itsa has a few dependencies
+
+  - [libmtdac](https://github.com/ac000/libmtdac)
+  - [libac](https://github.com/ac000/libac)
+  - [libcurl](https://curl.se/libcurl/) (via libmtdac)
+  - [jansson](https://digip.org/jansson/)
+
+the last two should already be packaged up for your system.
+
+On Red Hat/Fedora/etc libcurl and jansson can be obtained with
+
+```
+$ sudo dnf install libcurl{,-devel} jansson{,-devel}
+```
+
+On Debian (something like...)
+
+```
+$ sudo apt-get install libcurl4{,-openssl-dev} libjansson{4,-dev}
+```
+
+Once they are installed you can build the other two libraries.
+
+On Red Hat/Fedora you can build RPMs for these.
+
+First create the rpm-build directory structure
+
+```
+$ mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+```
+
+make sure you have the rpm-build package
+
+```
+$ sudo dnf install rpm-build
+```
+
+```
+$ git clone https://github.com/ac000/libmtdac.git
+$ cd libmtdac
+$ make rpm
+$ sudo dnf install ~/rpmbuild/RPMS/x86_64/libmtdac-*
+```
+
+```
+cd ..
+```
+
+```
+$ git clone https://github.com/ac000/libac.git
+$ cd libac
+$ make rpm
+$ sudo dnf install ~/rpmbuild/RPMS/x86_64/libac-*
+```
+
+```
+cd ..
+```
+
+and finally itsa itself
+
+```
+$ git clone https://github.com/ac000/itsa.git
+$ cd itsa
+$ make rpm
+$ sudo dnf install ~/rpmbuild/RPMS/x86_64/itsa-*
+```
+
+# Using
+
+itsa currently supports the following commands
+
+```
+Usage: itsa COMMAND [OPTIONS]
+
+Commands
+    init
+    list-periods [<start> <end>]
+    create-period
+    update-period <period_id>
+    update-annual-summary <tax_year>
+    get-end-of-period-statement-obligations
+    submit-end-of-period-statement <start> <end>
+    crystallise <tax_year>
+    list-calculations [tax_year]
+    view-end-of-year-estimate
+```
+
+It requires a little bit of config...
+
+```
+$ mkdir -p ~/.config/itsa
+$ cp config.json.tmpl ~/.config/itsa/config.json
+```
+
+Edit *~/.config/itsa/config.json* and put in the path to your GNUCash SQLite
+file.
+
+Set *production_api* accordingly.
+
+Next you will need to run
+
+```
+$ itsa init
+```
+
+this need only be run once. Follow the instructions.
+
+# Fraud Prevention Headers
+
+It's important to point out that itsa will send various headers to HMRC with
+various bits of information such as your IP addresses, MAC addresses,
+OS username, a unique device ID.
+
+# License
+
+itsa is licensed under the GNU General Public License (LGPL) version 2
+
+See *COPYING* in the repository root for details.
+
+# Contributing
+
+See *CodingStyle.md* & *Contributing.md*

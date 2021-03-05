@@ -1,0 +1,23 @@
+# Either copy this into /usr/share/bash-completion/completions/
+# or you can load it in situ with 'source itsa'
+
+_itsa()
+{
+	local cur prev
+	local cmd
+
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	cmd=${COMP_WORDS[0]}
+
+	case ${COMP_CWORD} in
+	1)
+		COMPREPLY=($(compgen -W "$(${prev} | tail -n +4 | cut -d " " -f 5)" -- ${cur}))
+		;;
+	*)
+		COMPREPLY=()
+		;;
+	esac
+}
+complete -o bashdefault -o default -F _itsa itsa ./itsa
