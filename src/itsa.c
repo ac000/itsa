@@ -1939,10 +1939,16 @@ static char *set_screens(void *user_data __unused)
 {
 	struct winsize ws;
 	char *buf;
+	int len;
 
 	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
-	asprintf(&buf, "width=%hu&height=%hu&scaling-factor=1&colour-depth=32",
-		 ws.ws_xpixel, ws.ws_ypixel);
+	len = asprintf(&buf,
+		       "width=%hu&height=%hu&scaling-factor=1&colour-depth=32",
+		       ws.ws_xpixel, ws.ws_ypixel);
+	if (len == -1) {
+		perror("asprintf");
+		buf = NULL;
+	}
 
 	return buf;
 }
@@ -1951,9 +1957,15 @@ static char *set_win_sz(void *user_data __unused)
 {
 	struct winsize ws;
 	char *buf;
+	int len;
 
 	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
-	asprintf(&buf, "width=%hu&height=%hu", ws.ws_xpixel, ws.ws_ypixel);
+	len = asprintf(&buf, "width=%hu&height=%hu", ws.ws_xpixel,
+		       ws.ws_ypixel);
+	if (len == -1) {
+		perror("asprintf");
+		buf = NULL;
+	}
 
 	return buf;
 }
