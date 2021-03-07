@@ -139,6 +139,27 @@ It's important to point out that itsa will send various headers to HMRC with
 various bits of information such as your IP addresses, MAC addresses,
 OS username, a unique device ID.
 
+# Environment variables
+
+Currently there are two environment variables that can bet set to control
+behaviour
+
+### ITSA_LOG_LEVEL
+
+This can be used to override the default log level (MTD\_OPT\_LOG\_ERR).
+
+Currently recognised values are; *debug* & *info*
+
+### VISUAL & EDITOR
+
+For some things itsa will open an editor, to determine what editor to use,
+itsa will first check the **VISUAL** ebvironment variable and execute what
+that's set to.
+
+If that isn't set it will execute whatever **EDITOR** is set to.
+
+If neither of those are set, itsa will default to **vi**.
+
 # License
 
 itsa is licensed under the GNU General Public License (LGPL) version 2
