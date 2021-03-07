@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <spawn.h>
 #include <sys/ioctl.h>
-//#include <termios.h>
 #include <linux/limits.h>
 
 #include <sqlite3.h>
