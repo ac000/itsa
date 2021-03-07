@@ -102,6 +102,7 @@ Usage: itsa COMMAND [OPTIONS]
 
 Commands
     init
+    re-auth
     list-periods [<start> <end>]
     create-period
     update-period <period_id>

@@ -139,6 +139,7 @@ static void disp_usage(void)
 	printf("Usage: itsa COMMAND [OPTIONS]\n\n");
 	printf("Commands\n");
 	printf("    init\n");
+	printf("    re-auth\n");
 	printf("    list-periods [<start> <end>]\n");
 	printf("    create-period\n");
 	printf("    update-period <period_id>\n");
@@ -2029,6 +2030,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 
 	if (IS_CMD("init"))
 		err = do_init_all(cfg);
+	else if (IS_CMD("re-auth"))
+		err = mtd_init_auth();
 	else if (IS_CMD("list-periods"))
 		err = list_periods(argc, argv);
 	else if (IS_CMD("create-period"))
