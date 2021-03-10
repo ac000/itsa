@@ -151,8 +151,8 @@ static void disp_usage(void)
 	printf("    list-calculations [tax_year]\n");
 	printf("    view-end-of-year-estimate\n");
 	printf("    add-savings-account\n");
-	printf("    view-savings-accounts\n");
-	printf("    amend-savings-account\n");
+	printf("    view-savings-accounts [tax_year]\n");
+	printf("    amend-savings-account <tax_year>\n");
 }
 
 static void free_config(void)
