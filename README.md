@@ -112,6 +112,9 @@ Commands
     crystallise <tax_year>
     list-calculations [tax_year]
     view-end-of-year-estimate
+    add-savings-account
+    view-savings-accounts
+    amend-savings-account
 ```
 
 It requires a little bit of config...

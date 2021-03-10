@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <spawn.h>
 #include <sys/ioctl.h>
+#include <regex.h>
 #include <linux/limits.h>
 
 #include <sqlite3.h>
@@ -149,6 +150,9 @@ static void disp_usage(void)
 	printf("    crystallise <tax_year>\n");
 	printf("    list-calculations [tax_year]\n");
 	printf("    view-end-of-year-estimate\n");
+	printf("    add-savings-account\n");
+	printf("    view-savings-accounts\n");
+	printf("    amend-savings-account\n");
 }
 
 static void free_config(void)
@@ -1781,6 +1785,314 @@ static int list_periods(int argc, char *argv[])
 	return 0;
 }
 
+#define SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS	"A-Za-z0-9 &'()*,-./@£"
+#define SAVINGS_ACCOUNT_NAME_REGEX \
+	"^[" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "]{1,32}$"
+static int add_savings_account(void)
+{
+	char *jbuf;
+	char *s;
+	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
+	ac_jsonw_t *json;
+	struct mtd_dsrc_ctx dsctx;
+	regex_t re;
+	regmatch_t pmatch[1];
+	int ret;
+	int err;
+
+	err = regcomp(&re, SAVINGS_ACCOUNT_NAME_REGEX, REG_EXTENDED);
+	if (err) {
+		perror("regcomp");
+		return -1;
+	}
+
+	printf(INFO
+	       "Enter a friendly account name, allowed characters are :-\n"
+	       "\n\t" TC_BOLD SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS TC_RST "\n");
+
+again:
+	printf("\n" CONFIRM "Name> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	if (!s || *submit == '\n')
+		return 0;
+
+	ac_str_chomp(submit);
+	ret = regexec(&re, submit, 1, pmatch, 0);
+	if (ret != 0) {
+		printf(ERROR "Invalid name\n");
+		goto again;
+	}
+
+	json = ac_jsonw_init();
+	ac_jsonw_set_indenter(json, "    ");
+	ac_jsonw_add_str(json, "accountName", submit);
+	ac_jsonw_end(json);
+
+	dsctx.data_src.buf = ac_jsonw_get(json);
+	dsctx.data_len = -1;
+	dsctx.src_type = MTD_DATA_SRC_BUF;
+
+	ret = -1;
+	err = mtd_sa_sa_create_account(&dsctx, &jbuf);
+	if (err) {
+		fprintf(stderr,
+			ERROR "Couldn't add savings account. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		goto out_free;
+	}
+
+	printf(SUCCESS "Added savings account : " TC_BOLD "%s" TC_RST "\n",
+	       submit);
+
+	ret = 0;
+
+out_free:
+	regfree(&re);
+	ac_jsonw_free(json);
+	free(jbuf);
+
+	return ret;
+}
+
+static int view_savings_accounts(int argc, char *argv[])
+{
+	json_t *result;
+	json_t *obs;
+	json_t *account;
+	char tyear[TAX_YEAR_SZ + 1];
+	char *jbuf;
+	size_t index;
+	int err;
+	int ret = -1;
+
+	err = mtd_sa_sa_list_accounts(&jbuf);
+	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
+		fprintf(stderr,
+			ERROR "Couldn't get list of savings accounts. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		free(jbuf);
+		return -1;
+	}
+
+	if (argc < 3)
+		get_tax_year(NULL, tyear);
+	else
+		snprintf(tyear, sizeof(tyear), "%s", argv[2]);
+
+	printf(SUCCESS "Savings Accounts for " TC_BOLD "%s" TC_RST "\n",
+	       tyear);
+
+	printf("\n" TC_CHARC "  %8s %26s" TC_RST "\n", "id", "name");
+	printf(TC_CHARC
+	       " ------------------------------------------------------------"
+	       TC_RST "\n");
+
+	result = get_result_json(jbuf);
+	obs = json_object_get(result, "savingsAccounts");
+	free(jbuf);
+	jbuf = NULL; /* avoid potential double free if no accounts */
+	json_array_foreach(obs, index, account) {
+		json_t *res;
+		json_t *id = json_object_get(account, "id");
+		json_t *name = json_object_get(account, "accountName");
+		json_t *taxed_amnt;
+		json_t *untaxed_amnt;
+		const char *said = json_string_value(id);
+		float taxed_int = -1.0;
+		float untaxed_int = -1.0;
+
+		err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
+		if (err) {
+			fprintf(stderr,
+				ERROR "Couldn't retrieve account details. "
+				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			free(jbuf);
+			goto out_free;
+		}
+		res = get_result_json(jbuf);
+		taxed_amnt = json_object_get(res, "taxedUkInterest");
+		untaxed_amnt = json_object_get(res, "untaxedUkInterest");
+
+		if (taxed_amnt)
+			taxed_int = json_real_value(taxed_amnt);
+		if (untaxed_amnt)
+			untaxed_int = json_real_value(untaxed_amnt);
+
+		printf("  %-25s %-34s\n",
+		       json_string_value(id), json_string_value(name));
+		if (taxed_int >= 0.0f)
+			printf(TC_CHARC "%25s" TC_RST TC_BOLD "%12.2f" TC_RST
+			       "\n", "taxedUkInterest : ", taxed_int);
+		if (untaxed_int >= 0.0f)
+			printf(TC_CHARC "%25s" TC_RST TC_BOLD "%12.2f" TC_RST
+			       "\n","untaxedUkInterest : ", untaxed_int);
+		printf("\n");
+
+		json_decref(res);
+		free(jbuf);
+        }
+
+	ret = 0;
+
+out_free:
+	json_decref(result);
+
+	return ret;
+}
+
+static int get_savings_accounts_list(ac_slist_t **accounts)
+{
+	json_t *result;
+	json_t *obs;
+	json_t *account;
+	char *jbuf;
+	size_t index;
+	int err;
+
+	err = mtd_sa_sa_list_accounts(&jbuf);
+	if (err) {
+		fprintf(stderr,
+			ERROR "Couldn't get list of savings accounts. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		free(jbuf);
+		return -1;
+	}
+
+	result = get_result_json(jbuf);
+	obs = json_object_get(result, "savingsAccounts");
+
+	printf(TC_CHARC "  idx %9s %26s" TC_RST "\n", "id", "name");
+	printf(TC_CHARC
+	       " ------------------------------------------------------------"
+	       "---" TC_RST "\n");
+	json_array_foreach(obs, index, account) {
+		json_t *id = json_object_get(account, "id");
+		json_t *name = json_object_get(account, "accountName");
+
+		printf("  %2zu    %-22s %s\n", index + 1,
+		       json_string_value(id), json_string_value(name));
+
+		ac_slist_add(accounts, strdup(json_string_value(id)));
+        }
+
+	json_decref(result);
+	free(jbuf);
+
+	return 0;
+}
+
+static int amend_savings_account(int argc, char *argv[])
+{
+	struct mtd_dsrc_ctx dsctx;
+	ac_slist_t *accounts = NULL;
+	json_t *result;
+	json_t *taxed_int;
+	json_t *untaxed_int;
+	json_t *amnt = json_real(0.0f);
+	char *jbuf;
+	char *s;
+	char submit[3];
+	char tpath[PATH_MAX];
+	const char *tyear;
+	const char *said;
+	const char *args[3] = { NULL };
+	int child_pid;
+	int status;
+	int tmpfd;
+	int ret = -1;
+	int err;
+
+	if (argc < 3) {
+		disp_usage();
+		return -1;
+	}
+
+	tyear = argv[2];
+
+	get_savings_accounts_list(&accounts);
+	printf("\n" CONFIRM "Select account to edit (n) or quit (Q)> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	if (!s || *submit < '1' || *submit > '9')
+		goto out_free;
+
+	said = ac_slist_nth_data(accounts, atoi(submit) - 1);
+	if (!said) {
+		fprintf(stderr, ERROR "No such account index\n");
+		goto out_free;
+	}
+	err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
+	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
+		fprintf(stderr,
+			ERROR "Couldn't retrieve account details. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		goto out_free;
+	}
+	if (mtd_http_status_code(jbuf) == MTD_HTTP_NOT_FOUND) {
+		fprintf(stderr, ERROR "No such Savings Account\n");
+		goto out_free;
+	}
+
+	result = get_result_json(jbuf);
+	if (!result)
+		result = json_pack("{}");
+	taxed_int = json_object_get(result, "taxedUkInterest");
+	if (!taxed_int)
+		json_object_set(result, "taxedUkInterest", amnt);
+	untaxed_int = json_object_get(result, "untaxedUkInterest");
+	if (!untaxed_int)
+		json_object_set(result, "untaxedUkInterest", amnt);
+
+	snprintf(tpath, sizeof(tpath),
+		 "/tmp/.itsa_savings_account.tmp.%d.json", getpid());
+	tmpfd = open(tpath, O_CREAT|O_TRUNC|O_RDWR|O_EXCL, 0666);
+	if (tmpfd == -1) {
+		fprintf(stderr,
+			ERROR "Couldn't open %s in %s\n", tpath, __func__);
+		perror("open");
+		goto out_free;
+	}
+
+	json_dumpfd(result, tmpfd, JSON_INDENT(4));
+	lseek(tmpfd, 0, SEEK_SET);
+
+	args[0] = get_editor();
+	args[1] = tpath;
+	posix_spawnp(&child_pid, args[0], NULL, NULL, (char * const *)args,
+		     environ);
+	waitpid(child_pid, &status, 0);
+
+	dsctx.data_src.fd = tmpfd;
+	dsctx.src_type = MTD_DATA_SRC_FD;
+
+	free(jbuf);
+	err = mtd_sa_sa_update_annual_summary(&dsctx, said, tyear, &jbuf);
+	if (err) {
+		fprintf(stderr,
+			ERROR "Couldn't update Savings Account. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		goto out_close_tmpfd;
+	}
+
+	printf(SUCCESS "Updated Savings Account " TC_BOLD "%s" TC_RST "\n",
+	       said);
+	args[2] = tyear;
+	view_savings_accounts(3, (char **)args);
+
+	ret = 0;
+
+out_close_tmpfd:
+	close(tmpfd);
+	unlink(tpath);
+
+	json_decref(result);
+
+out_free:
+	ac_slist_destroy(&accounts, free);
+	free(jbuf);
+
+	return ret;
+}
+
 static int do_init_all(const struct mtd_cfg *cfg)
 {
 	json_t *result = NULL;
@@ -2050,6 +2362,12 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		err = list_calculations(argc, argv);
 	else if (IS_CMD("view-end-of-year-estimate"))
 		err = view_end_of_year_estimate();
+	else if (IS_CMD("add-savings-account"))
+		err = add_savings_account();
+	else if (IS_CMD("view-savings-accounts"))
+		err = view_savings_accounts(argc, argv);
+	else if (IS_CMD("amend-savings-account"))
+		err =amend_savings_account(argc, argv);
 	else
 		disp_usage();
 
