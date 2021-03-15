@@ -2249,14 +2249,33 @@ static int read_config(void)
 
 static char *set_screens(void *user_data __unused)
 {
-	struct winsize ws;
+	FILE *fp;
 	char *buf;
+	int w;
+	int h;
+	int bpp;
 	int len;
 
-	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
+	fp = fopen("/sys/class/graphics/fb0/virtual_size", "r");
+	if (!fp)
+		return NULL;
+
+	len = fscanf(fp, "%d,%d", &w, &h);
+	fclose(fp);
+	if (len == 0)
+		return NULL;
+
+	fp = fopen("/sys/class/graphics/fb0/bits_per_pixel", "r");
+	if (fp) {
+		len = fscanf(fp, "%d", &bpp);
+		if (len == 0)
+			bpp = 32;
+		fclose(fp);
+	}
+
 	len = asprintf(&buf,
-		       "width=%hu&height=%hu&scaling-factor=1&colour-depth=32",
-		       ws.ws_xpixel, ws.ws_ypixel);
+		       "width=%d&height=%d&scaling-factor=1&colour-depth=%d",
+		       w, h, bpp);
 	if (len == -1) {
 		perror("asprintf");
 		buf = NULL;
