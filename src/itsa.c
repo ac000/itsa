@@ -432,7 +432,7 @@ static int display_calculation_messages(const char *cid)
 	int ret = -1;
 
 	err = mtd_ic_sa_get_messages(cid, NULL, &jbuf);
-	if (err) {
+	if (err && mtd_hmrc_error(jbuf) != MTD_HMRC_ERR_NO_MESSAGES_PRESENT) {
 		fprintf(stderr,
 			ERROR "Couldn't get calculation messages. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
