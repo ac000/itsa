@@ -18,7 +18,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <spawn.h>
-#include <sys/ioctl.h>
 #include <regex.h>
 #include <linux/limits.h>
 
@@ -2247,60 +2246,6 @@ static int read_config(void)
 	return 0;
 }
 
-static char *set_screens(void *user_data __unused)
-{
-	FILE *fp;
-	char *buf;
-	int w;
-	int h;
-	int bpp;
-	int len;
-
-	fp = fopen("/sys/class/graphics/fb0/virtual_size", "r");
-	if (!fp)
-		return NULL;
-
-	len = fscanf(fp, "%d,%d", &w, &h);
-	fclose(fp);
-	if (len == 0)
-		return NULL;
-
-	fp = fopen("/sys/class/graphics/fb0/bits_per_pixel", "r");
-	if (fp) {
-		len = fscanf(fp, "%d", &bpp);
-		if (len == 0)
-			bpp = 32;
-		fclose(fp);
-	}
-
-	len = asprintf(&buf,
-		       "width=%d&height=%d&scaling-factor=1&colour-depth=%d",
-		       w, h, bpp);
-	if (len == -1) {
-		perror("asprintf");
-		buf = NULL;
-	}
-
-	return buf;
-}
-
-static char *set_win_sz(void *user_data __unused)
-{
-	struct winsize ws;
-	char *buf;
-	int len;
-
-	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
-	len = asprintf(&buf, "width=%hu&height=%hu", ws.ws_xpixel,
-		       ws.ws_ypixel);
-	if (len == -1) {
-		perror("asprintf");
-		buf = NULL;
-	}
-
-	return buf;
-}
-
 static char *set_prod_name(void *user_data __unused)
 {
 	return strdup(PROD_NAME);
@@ -2401,8 +2346,6 @@ int main(int argc, char *argv[])
 	char config_dir[PATH_MAX];
 	const char *log_level = getenv("ITSA_LOG_LEVEL");
 	const struct mtd_fph_ops fph_ops = {
-		.fph_screens = set_screens,
-		.fph_window_sz = set_win_sz,
 		.fph_version_cli = set_ver_cli,
 		.fph_prod_name = set_prod_name
 	};
@@ -2430,7 +2373,7 @@ int main(int argc, char *argv[])
 	else if (log_level && *log_level == 'i')
 		flags |= MTD_OPT_LOG_INFO;
 
-	flags |= MTD_OPT_ACT_DESKTOP_APP_DIRECT;
+	flags |= MTD_OPT_ACT_OTHER_DIRECT;
 	err = mtd_init(flags, &cfg);
 	if (err) {
 		fprintf(stderr, ERROR "%s\n", mtd_err2str(err));
