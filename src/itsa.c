@@ -2302,40 +2302,38 @@ static const char *get_conf_dir(char *path)
 #define IS_CMD(cmd)		(strcmp(cmd, argv[1]) == 0)
 static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 {
-	int err = -1;
-
 	if (IS_CMD("init"))
-		err = do_init_all(cfg);
-	else if (IS_CMD("re-auth"))
-		err = mtd_init_auth();
-	else if (IS_CMD("list-periods"))
-		err = list_periods(argc, argv);
-	else if (IS_CMD("create-period"))
-		err = create_period();
-	else if (IS_CMD("update-period"))
-		err = update_period(argc, argv);
-	else if (IS_CMD("update-annual-summary"))
-		err = update_annual_summary(argc, argv);
-	else if (IS_CMD("submit-end-of-period-statement"))
-		err = submit_eop_statement(argc, argv);
-	else if (IS_CMD("get-end-of-period-statement-obligations"))
-		err = get_eop_obligations();
-	else if (IS_CMD("crystallise"))
-		err = crystallise(argc, argv);
-	else if (IS_CMD("list-calculations"))
-		err = list_calculations(argc, argv);
-	else if (IS_CMD("view-end-of-year-estimate"))
-		err = view_end_of_year_estimate();
-	else if (IS_CMD("add-savings-account"))
-		err = add_savings_account();
-	else if (IS_CMD("view-savings-accounts"))
-		err = view_savings_accounts(argc, argv);
-	else if (IS_CMD("amend-savings-account"))
-		err =amend_savings_account(argc, argv);
-	else
-		disp_usage();
+		return do_init_all(cfg);
+	if (IS_CMD("re-auth"))
+		return mtd_init_auth();
+	if (IS_CMD("list-periods"))
+		return list_periods(argc, argv);
+	if (IS_CMD("create-period"))
+		return create_period();
+	if (IS_CMD("update-period"))
+		return update_period(argc, argv);
+	if (IS_CMD("update-annual-summary"))
+		return update_annual_summary(argc, argv);
+	if (IS_CMD("submit-end-of-period-statement"))
+		return submit_eop_statement(argc, argv);
+	if (IS_CMD("get-end-of-period-statement-obligations"))
+		return get_eop_obligations();
+	if (IS_CMD("crystallise"))
+		return crystallise(argc, argv);
+	if (IS_CMD("list-calculations"))
+		return list_calculations(argc, argv);
+	if (IS_CMD("view-end-of-year-estimate"))
+		return view_end_of_year_estimate();
+	if (IS_CMD("add-savings-account"))
+		return add_savings_account();
+	if (IS_CMD("view-savings-accounts"))
+		return view_savings_accounts(argc, argv);
+	if (IS_CMD("amend-savings-account"))
+		return amend_savings_account(argc, argv);
 
-	return err;
+	disp_usage();
+
+	return -1;
 }
 
 int main(int argc, char *argv[])
