@@ -264,11 +264,11 @@ static const char *get_period_color(const char *start, const char *end,
 
 	if (met && now > dt)
 		return TC_GREEN;
-	else if (now > et && now <= dt)
+	if (now > et && now <= dt)
 		return TC_TANG;
-	else if (now >= st && now <= et)
+	if (now >= st && now <= et)
 		return "";
-	else if (!met && now > dt)
+	if (!met && now > dt)
 		return TC_RED;
 
 	return TC_CHARC;
