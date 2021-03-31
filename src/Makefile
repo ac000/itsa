@@ -9,9 +9,9 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 CC	= gcc
 CFLAGS	= -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 \
 	  -g -O2 -Wp,-D_FORTIFY_SOURCE=2 --param=ssp-buffer-size=4 \
-	  -fPIC -fexceptions -I../../libmtdac/include \
+	  -fPIE -fexceptions -I../../libmtdac/include \
 	  -DGIT_VERSION=${GIT_VERSION} -pipe
-LDFLAGS = -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -fpie
+LDFLAGS = -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
 LIBS	= -lmtdac -lac -lsqlite3 -ljansson
 POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
