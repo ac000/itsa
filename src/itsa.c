@@ -773,13 +773,13 @@ static int get_calculation_meta(const char *cid)
 
 again:
 	err = mtd_ic_sa_get_calculation_meta(cid, &jbuf);
-	if ((err && err != MTD_ERR_REQUEST) ||
-	    (err == MTD_ERR_REQUEST && fib_sleep == 5)) {
+	if ((err && err != -MTD_ERR_REQUEST) ||
+	    (err == -MTD_ERR_REQUEST && fib_sleep == 5)) {
 		fprintf(stderr, "\n" ERROR
 			"Couldn't get calculation metadata. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
-	} else if (err == MTD_ERR_REQUEST) {
+	} else if (err == -MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep, &state);
 		printf("\r  Trying to get calculation metadata again in "
 		       TC_BOLD "%d" TC_RST " second(s)", fib_sleep);
