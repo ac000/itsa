@@ -781,8 +781,8 @@ again:
 		goto out_free;
 	} else if (err == -MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep, &state);
-		printf("\r  Trying to get calculation metadata again in "
-		       TC_BOLD "%d" TC_RST " second(s)", fib_sleep);
+		printf(INFO "Trying to get calculation metadata again in "
+		       TC_BOLD "%d" TC_RST " second(s)\n", fib_sleep);
 		fflush(stdout);
 		sleep(fib_sleep);
 
