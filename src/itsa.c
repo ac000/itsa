@@ -920,7 +920,6 @@ static int crystallise(int argc, char *argv[])
 	free(jbuf);
 
 	json = ac_jsonw_init();
-	ac_jsonw_set_indenter(json, "    ");
 	ac_jsonw_add_str(json, "calculationId", cid);
 	ac_jsonw_end(json);
 
@@ -970,7 +969,6 @@ static int submit_eop_obligation(const char *start, const char *end)
 		return 0;
 
 	json = ac_jsonw_init();
-	ac_jsonw_set_indenter(json, "    ");
 	ac_jsonw_add_bool(json, "finalised", true);
 	ac_jsonw_end(json);
 
@@ -1173,7 +1171,6 @@ static int trigger_calculation(const char *tax_year)
 	int err;
 
 	json = ac_jsonw_init();
-	ac_jsonw_set_indenter(json, "    ");
 
 	ac_jsonw_add_str(json, "taxYear", tax_year);
 	ac_jsonw_end(json);
@@ -1417,7 +1414,6 @@ static int set_period(const char *start, const char *end, long income,
 	int ret = 0;
 
 	json = ac_jsonw_init();
-	ac_jsonw_set_indenter(json, "    ");
 
 	ac_jsonw_add_str(json, "from", start);
 	ac_jsonw_add_str(json, "to", end);
@@ -1823,7 +1819,6 @@ again:
 	}
 
 	json = ac_jsonw_init();
-	ac_jsonw_set_indenter(json, "    ");
 	ac_jsonw_add_str(json, "accountName", submit);
 	ac_jsonw_end(json);
 
