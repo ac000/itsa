@@ -456,7 +456,7 @@ out_free_buf:
 
 static void print_bread_crumb(const char *bread_crumb[])
 {
-	char str[128];
+	char str[192];
 	int len = 0;
 
 	if (!*bread_crumb) {
@@ -481,7 +481,7 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 	bool done_bread_crumb = false;
 
 	json_object_foreach(obj, key, value) {
-		char val[128];
+		char val[64];
 
 		switch (json_typeof(value)) {
 		case JSON_OBJECT:
