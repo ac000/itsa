@@ -44,7 +44,6 @@
 #define TC_HI_RED		"\e[38;5;9m"
 #define TC_GREEN		"\e[38;5;40m"
 #define	TC_RED			"\e[38;5;160m"
-#define TC_AQUA			"\e[38;5;51m"
 #define TC_BLUE			"\e[38;5;75m"
 #define TC_CHARC		"\e[38;5;8m"
 #define TC_TANG			"\e[38;5;220m"
