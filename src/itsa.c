@@ -42,6 +42,7 @@
 #define TC_HI_YELLOW		"\e[38;5;11m"
 #define TC_HI_GREEN		"\e[38;5;10m"
 #define TC_HI_RED		"\e[38;5;9m"
+#define TC_HI_BLUE		"\e[38;5;33m"
 #define TC_GREEN		"\e[38;5;40m"
 #define	TC_RED			"\e[38;5;160m"
 #define TC_BLUE			"\e[38;5;75m"
@@ -50,7 +51,7 @@
 #define TC_BOLD			"\e[1m"
 #define TC_RST			"\e[0m"
 
-#define MSG_INFO		"\e[38;5;33mINFO" TC_RST
+#define MSG_INFO		TC_HI_BLUE "INFO" TC_RST
 #define MSG_WARN		TC_HI_YELLOW "WARNINGS" TC_RST
 #define MSG_ERR			TC_HI_RED "ERRORS" TC_RST
 
