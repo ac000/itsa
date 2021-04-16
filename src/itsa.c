@@ -32,24 +32,14 @@
 
 #include <libac.h>
 
+#include "color.h"
+
 #define PROD_NAME		"itsa"
 
 #define ITSA_CFG		".config/itsa/config.json"
 #define DEFAULT_EDITOR		"vi"
 
 #define list_for_each(list)	for ( ; list; list = list->next)
-
-#define TC_HI_YELLOW		"\e[38;5;11m"
-#define TC_HI_GREEN		"\e[38;5;10m"
-#define TC_HI_RED		"\e[38;5;9m"
-#define TC_HI_BLUE		"\e[38;5;33m"
-#define TC_GREEN		"\e[38;5;40m"
-#define	TC_RED			"\e[38;5;160m"
-#define TC_BLUE			"\e[38;5;75m"
-#define TC_CHARC		"\e[38;5;8m"
-#define TC_TANG			"\e[38;5;220m"
-#define TC_BOLD			"\e[1m"
-#define TC_RST			"\e[0m"
 
 #define MSG_INFO		TC_HI_BLUE "INFO" TC_RST
 #define MSG_WARN		TC_HI_YELLOW "WARNINGS" TC_RST
