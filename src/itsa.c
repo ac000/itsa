@@ -48,7 +48,6 @@
 #define INFO			"[" TC_BLUE "INFO" TC_RST "] "
 #define CONFIRM			"[" TC_CHARC "CONFIRMATION" TC_RST "] "
 #define WARNING			"[" TC_HI_YELLOW "WARNING" TC_RST "] "
-#define SUCCESS			"[" TC_HI_GREEN "OK" TC_RST "] "
 
 #define STRUE			TC_HI_GREEN "t" TC_RST
 #define SFALSE			TC_HI_RED "f" TC_RST
@@ -565,8 +564,7 @@ static int display_end_of_year_est(const char *cid)
 		goto out_free_buf;
 	}
 
-	printf(SUCCESS
-	       "End of Year estimate for " TC_BOLD "%s" TC_RST "\n", cid);
+	printsc("End of Year estimate for #BOLD#%s#RST#\n", cid);
 
 	result = get_result_json(jbuf);
 
@@ -605,9 +603,8 @@ static int display_calulated_a_d_r(const char *cid)
 		goto out_free_buf;
 	}
 
-	printf(SUCCESS
-	       "Allowances, deductions & reliefs calculation for " TC_BOLD
-	       "%s" TC_RST "\n", cid);
+	printsc("Allowances, deductions & reliefs calculation for "
+		"#BOLD#%s#RST#\n", cid);
 
 	result = get_result_json(jbuf);
 
@@ -646,9 +643,7 @@ static int display_calulated_income_tax_nics(const char *cid)
 		goto out_free_buf;
 	}
 
-	printf(SUCCESS
-	       "Income TAX NICs calculation for " TC_BOLD "%s" TC_RST "\n",
-	       cid);
+	printsc("Income TAX NICs calculation for #BOLD#%s#RST#\n", cid);
 
 	result = get_result_json(jbuf);
 
@@ -687,9 +682,7 @@ static int display_taxable_income(const char *cid)
 		goto out_free_buf;
 	}
 
-	printf(SUCCESS
-	       "Taxable Income for calculation " TC_BOLD "%s" TC_RST "\n",
-	       cid);
+	printsc("Taxable Income for calculation #BOLD#%s#RST#\n", cid);
 
 	result = get_result_json(jbuf);
 
@@ -780,8 +773,8 @@ again:
 	}
 
 	tyear = json_object_get(result, "taxYear");
-	printf(SUCCESS "Calculation Metadata for " TC_BOLD "%s" TC_RST "\n",
-	       json_string_value(tyear));
+	printsc("Calculation Metadata for #BOLD#%s#RST#\n",
+		json_string_value(tyear));
 
 	json_object_foreach(result, key, value) {
 		char val[128];
@@ -859,8 +852,7 @@ static int crystallise(int argc, char *argv[])
 	cid_obj = json_object_get(result, "calculationId");
 	cid = json_string_value(cid_obj);
 
-	printf(SUCCESS "Intent to Crystallise calculationId: "
-	       TC_BOLD "%s" TC_RST "\n", cid);
+	printsc("Intent to Crystallise calculationId: #BOLD#%s#RST#\n", cid);
 
 	if (!is_prod_api)
 		extra_hdrs[0] = "Gov-Test-Scenario: CRYSTALLISATION_METADATA";
@@ -913,7 +905,7 @@ static int crystallise(int argc, char *argv[])
 		goto out_free_json;
 	}
 
-	printf(SUCCESS "Crystallisation done.\n");
+	printsc("Crystallisation done.\n");
 
 out_ok:
 	ret = 0;
@@ -963,8 +955,8 @@ static int submit_eop_obligation(const char *start, const char *end)
 		goto out_free;
 	}
 
-	printf(SUCCESS "End of Period Statement submitted for " TC_BOLD "%s"
-	       TC_RST " to " TC_BOLD "%s" TC_RST "\n", start, end);
+	printsc("End of Period Statement submitted for #BOLD#%s#RST# to "
+		"#BOLD#%s#RST#\n", start, end);
 
 	ret = 0;
 
@@ -992,7 +984,7 @@ static int get_eop_obligations(void)
 		goto out_free;
 	}
 
-	printf(SUCCESS "End of Period Statement Obligations\n");
+	printsc("End of Period Statement Obligations\n");
 
         result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
@@ -1053,9 +1045,8 @@ static int biss_se_summary(const char *tax_year)
 		goto out_free;
 	}
 
-	printf(SUCCESS "BISS Self-Employment Annual Summary for "
-	       TC_BOLD "%s" TC_RST TC_CHARC " / " TC_RST TC_BOLD "%s" TC_RST
-	       "\n", SEID, tax_year);
+	printsc("BISS Self-Employment Annual Summary for #BOLD#%s#RST# "
+		"#CHARC#/#RST# #BOLD#%s#RST#\n", SEID, tax_year);
 
 	result = get_result_json(jbuf);
 
@@ -1161,8 +1152,7 @@ static int trigger_calculation(const char *tax_year)
 		goto out_free;
 	}
 
-	printf(SUCCESS "Triggered calculation for " TC_BOLD "%s" TC_RST "\n",
-	       tax_year);
+	printsc("Triggered calculation for #BOLD#%s#RST#\n", tax_year);
 
 	result = get_result_json(jbuf);
 	cid_obj = json_object_get(result, "id");
@@ -1226,8 +1216,7 @@ static int annual_summary(const char *tax_year)
 		goto out_free;
 	}
 
-	printf(SUCCESS "Annual Summary for " TC_BOLD "%s" TC_RST "\n",
-	       tax_year);
+	printsc("Annual Summary for #BOLD#%s#RST#\n", tax_year);
 
 	snprintf(tpath, sizeof(tpath), "/tmp/.itsa_annual_summary.tmp.%d.json",
 		 getpid());
@@ -1270,8 +1259,8 @@ again:
 			goto out_free_json;
 		}
 
-		printf(SUCCESS "Updated Annual Summary for " TC_BOLD "%s"
-		       TC_RST "\n", tax_year);
+		printsc("Updated Annual Summary for #BOLD#%s#RST#\n",
+			tax_year);
 
 		err = trigger_calculation(tax_year);
 		if (err)
@@ -1416,8 +1405,8 @@ static int set_period(const char *start, const char *end, long income,
 			mtd_err2str(err), jbuf);
 		ret = -1;
 	} else {
-		printf("\n" SUCCESS "%s period for " TC_BOLD "%s" TC_RST
-		       " to " TC_BOLD "%s" TC_RST "\n",
+		printf("\n");
+		printsc("%s period for #BOLD#%s#RST# to #BOLD#%s#RST#\n",
 		       action == PERIOD_CREATE ? "Created" : "Updated",
 		       start, end);
 	}
@@ -1473,9 +1462,7 @@ static int view_end_of_year_estimate(void)
 		goto out_free_json;
 	}
 
-	printf(SUCCESS
-	       "Found inYear calculation for " TC_BOLD "%s" TC_RST "\n",
-	       tyear);
+	printsc("Found inYear calculation for #BOLD#%s#RST#\n", tyear);
 	JKEY_FW = 32;
 	err = display_end_of_year_est(cid);
 	if (err == -RULE_CALCULATION_ERROR_MESSAGES_EXIST) {
@@ -1519,7 +1506,7 @@ static int list_calculations(int argc, char *argv[])
 		goto out_free_buf;
 	}
 
-	printf(SUCCESS "Got list of calculations\n");
+	printsc("Got list of calculations\n");
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "calculations");
@@ -1799,8 +1786,7 @@ again:
 		goto out_free;
 	}
 
-	printf(SUCCESS "Added savings account : " TC_BOLD "%s" TC_RST "\n",
-	       submit);
+	printsc("Added savings account : #BOLD#%s#RST#\n", submit);
 
 	ret = 0;
 
@@ -1836,8 +1822,7 @@ static int view_savings_accounts(int argc, char *argv[])
 	else
 		snprintf(tyear, sizeof(tyear), "%s", argv[2]);
 
-	printf(SUCCESS "Savings Accounts for " TC_BOLD "%s" TC_RST "\n",
-	       tyear);
+	printsc("Savings Accounts for #BOLD#%s#RST#\n", tyear);
 
 	printf("\n" TC_CHARC "  %8s %26s" TC_RST "\n", "id", "name");
 	printf(TC_CHARC
@@ -2025,8 +2010,7 @@ static int amend_savings_account(int argc, char *argv[])
 		goto out_close_tmpfd;
 	}
 
-	printf(SUCCESS "Updated Savings Account " TC_BOLD "%s" TC_RST "\n",
-	       said);
+	printsc("Updated Savings Account #BOLD#%s#RST#\n", said);
 	args[2] = tyear;
 	view_savings_accounts(3, (char **)args);
 
@@ -2111,8 +2095,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 		goto out_free;
 	}
 
-	printf(SUCCESS "Found SEID : " TC_BOLD "%s" TC_RST "\n",
-	       json_string_value(seid));
+	printsc("Found SEID : #BOLD#%s#RST#\n", json_string_value(seid));
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
 	config = json_load_file(path, 0, &error);
@@ -2125,9 +2108,9 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	json_dump_file(config, path, JSON_INDENT(4));
 	json_decref(config);
 
-	printf("\n" SUCCESS
-	       "Initialisation complete. Re-run command if something looks "
-	       "wrong.\n");
+	printf("\n");
+	printsc("Initialisation complete. Re-run command if something looks "
+		"wrong.\n");
 
 	ret = 0;
 
