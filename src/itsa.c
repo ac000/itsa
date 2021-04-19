@@ -49,7 +49,6 @@
 #define CONFIRM			"[" TC_CHARC "CONFIRMATION" TC_RST "] "
 #define WARNING			"[" TC_HI_YELLOW "WARNING" TC_RST "] "
 #define SUCCESS			"[" TC_HI_GREEN "OK" TC_RST "] "
-#define ERROR			"[" TC_HI_RED "ERROR" TC_RST "] "
 
 #define STRUE			TC_HI_GREEN "t" TC_RST
 #define SFALSE			TC_HI_RED "f" TC_RST
@@ -347,8 +346,7 @@ static void get_data(const char *start, const char *end, long *income,
 		len = asprintf(&item, "%.10s %-54s %7.2f", date, desc,
 			       amnt / 100.0f);
 		if (len == -1) {
-			fprintf(stderr,
-				ERROR "asprintf() failed in %s\n", __func__);
+			printec("asprintf() failed in %s\n", __func__);
 			exit(EXIT_FAILURE);
 		}
 		account = (const char *)sqlite3_column_text(acc_stmt, 0);
@@ -359,8 +357,7 @@ static void get_data(const char *start, const char *end, long *income,
 			*expenses += amnt;
 			ac_slist_add(&e_list, item);
 		} else {
-			fprintf(stderr,
-				ERROR "Unknown account type : %s\n", account);
+			printec("Unknown account type : %s\n", account);
 			exit(EXIT_FAILURE);
 		}
 
@@ -422,8 +419,7 @@ static int display_calculation_messages(const char *cid)
 
 	err = mtd_ic_sa_get_messages(cid, NULL, &jbuf);
 	if (err && mtd_hmrc_error(jbuf) != MTD_HMRC_ERR_NO_MESSAGES_PRESENT) {
-		fprintf(stderr,
-			ERROR "Couldn't get calculation messages. (%s)\n%s\n",
+		printec("Couldn't get calculation messages. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -550,19 +546,19 @@ static int display_end_of_year_est(const char *cid)
 	if (err) {
 		enum ic_end_of_year_est_error ecode;
 
-		fprintf(stderr, ERROR "Couldn't get End of Year estimate. ");
+		printec("Couldn't get End of Year estimate. ");
 
 		ecode = get_api_err(ic_end_of_year_est_errors, jbuf);
 		switch (-ecode) {
 		case RULE_CALCULATION_ERROR_MESSAGES_EXIST:
-			fprintf(stderr, "Error messages exist.\n");
+			printec("Error messages exist.\n");
 			break;
 		case MATCHING_RESOURCE_NOT_FOUND:
 		case END_OF_YEAR_ESTIMATE_NOT_PRESENT:
-			fprintf(stderr, "No end of Year Estimates.\n");
+			printec("No end of Year Estimates.\n");
 			break;
 		default:
-			fprintf(stderr, "(%s)\n%s\n", mtd_err2str(err), jbuf);
+			printec("(%s)\n%s\n", mtd_err2str(err), jbuf);
 		}
 
 		ret = ecode;
@@ -604,10 +600,8 @@ static int display_calulated_a_d_r(const char *cid)
 
 	err = mtd_ic_sa_get_allowances_deductions_reliefs(cid, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get "
-			"allowances, deductions & reliefs calulation. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		printec("Couldn't get allowances, deductions & reliefs "
+			"calulation. (%s)\n%s\n", mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
 
@@ -647,9 +641,8 @@ static int display_calulated_income_tax_nics(const char *cid)
 
 	err = mtd_ic_sa_get_income_tax_nics_calc(cid, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get income TAX NICs calculation. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		printec("Couldn't get income TAX NICs calculation. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
 
@@ -689,8 +682,7 @@ static int display_taxable_income(const char *cid)
 
 	err = mtd_ic_sa_get_taxable_income(cid, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get taxable income. (%s)\n%s\n",
+		printec("Couldn't get taxable income. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -765,8 +757,7 @@ again:
 	err = mtd_ic_sa_get_calculation_meta(cid, &jbuf);
 	if ((err && err != -MTD_ERR_REQUEST) ||
 	    (err == -MTD_ERR_REQUEST && fib_sleep == 5)) {
-		fprintf(stderr, "\n" ERROR
-			"Couldn't get calculation metadata. (%s)\n%s\n",
+		printec("Couldn't get calculation metadata. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	} else if (err == -MTD_ERR_REQUEST) {
@@ -783,8 +774,7 @@ again:
 
 	ec = json_object_get(result, "calculationErrorCount");
 	if (ec && json_integer_value(ec) > 0) {
-		fprintf(stderr, ERROR
-			"There was a problem with your calculation. Check the "
+		printec("There was a problem with your calculation. Check the "
 			"below messages\n        for ERROR's.\n");
 		goto out_free_json;
 	}
@@ -860,8 +850,7 @@ static int crystallise(int argc, char *argv[])
 
 	err = mtd_ic_cr_intent_to_crystallise(tyear, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Intent to Crystallise failed. (%s)\n%s\n",
+		printec("Intent to Crystallise failed. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -919,8 +908,8 @@ static int crystallise(int argc, char *argv[])
 
 	err = mtd_ic_cr_crystallise(&dsctx, tyear, &jbuf);
 	if (err) {
-		fprintf(stderr, ERROR "Failed to crystallise. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
+		printec("Failed to crystallise. (%s)\n%s\n", mtd_err2str(err),
+			jbuf);
 		goto out_free_json;
 	}
 
@@ -969,9 +958,8 @@ static int submit_eop_obligation(const char *start, const char *end)
 	err = mtd_sa_se_submit_end_of_period_statement(&dsctx, SEID, start,
 						       end, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't submit End of Period Statement. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		printec("Couldn't submit End of Period Statement. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
 
@@ -999,8 +987,7 @@ static int get_eop_obligations(void)
 
 	err = mtd_sa_se_get_end_of_period_obligations(SEID, NULL, &jbuf);
 	if (err) {
-		fprintf(stderr, ERROR
-			"Couldn't get End of Period Statement(s). (%s)\n%s\n",
+		printec("Couldn't get End of Period Statement(s). (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -1061,10 +1048,8 @@ static int biss_se_summary(const char *tax_year)
 
 	err = mtd_biss_get_self_employment(qs, &jbuf);
 	if (err) {
-		fprintf(stderr, ERROR
-			"Couldn't get BISS Self-Employment Annual Summary. "
-			"(%s)\n%s\n",
-			mtd_err2str(err), jbuf);
+		printec("Couldn't get BISS Self-Employment Annual Summary. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
 		goto out_free;
 	}
 
@@ -1171,8 +1156,7 @@ static int trigger_calculation(const char *tax_year)
 
 	err = mtd_ic_sa_trigger_calculation(&dsctx, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't trigger calculation. (%s)\n%s\n",
+		printec("Couldn't trigger calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -1237,8 +1221,7 @@ static int annual_summary(const char *tax_year)
 
 	err = mtd_sa_se_get_annual_summary(SEID, tax_year, &jbuf);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
-		fprintf(stderr,
-			ERROR "Couldn't get Annual Summary. (%s)\n%s\n",
+		printec("Couldn't get Annual Summary. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -1250,8 +1233,7 @@ static int annual_summary(const char *tax_year)
 		 getpid());
 	tmpfd = open(tpath, O_CREAT|O_TRUNC|O_RDWR|O_EXCL, 0666);
 	if (tmpfd == -1) {
-		fprintf(stderr,
-			ERROR "Couldn't open %s in %s\n", tpath, __func__);
+		printec("Couldn't open %s in %s\n", tpath, __func__);
 		perror("open");
 		goto out_free;
 	}
@@ -1283,9 +1265,8 @@ again:
 		err = mtd_sa_se_update_annual_summary(&dsctx, SEID, tax_year,
 						      &jbuf);
 		if (err) {
-			fprintf(stderr,
-				ERROR "Couldn't update Annual Summary. "
-				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			printec("Couldn't update Annual Summary. (%s)\n%s\n",
+				mtd_err2str(err), jbuf);
 			goto out_free_json;
 		}
 
@@ -1315,8 +1296,7 @@ again:
 		result = json_loadfd(tmpfd, 0, NULL);
 		err = ftruncate(tmpfd, 0);
 		if (err) {
-			fprintf(stderr,
-				ERROR "ftruncate failed in %s\n", __func__);
+			printec("ftruncate failed in %s\n", __func__);
 			perror("ftruncate");
 			goto out_free_json;
 		}
@@ -1431,7 +1411,7 @@ static int set_period(const char *start, const char *end, long income,
 		err = mtd_sa_se_update_period(&dsctx, SEID, period_id, &jbuf);
 	}
 	if (err) {
-		fprintf(stderr, ERROR "Failed to %s period. (%s)\n%s\n",
+		printec("Failed to %s period. (%s)\n%s\n",
 			action == PERIOD_CREATE ? "create" : "update",
 			mtd_err2str(err), jbuf);
 		ret = -1;
@@ -1465,8 +1445,7 @@ static int view_end_of_year_estimate(void)
 	snprintf(qs, sizeof(qs), "?taxYear=%s", tyear);
 	err = mtd_ic_sa_list_calculations(qs, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get calculations list. (%s)\n%s\n",
+		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -1489,9 +1468,8 @@ static int view_end_of_year_estimate(void)
 	}
 
 	if (!cid) {
-		fprintf(stderr,
-			ERROR "No inYear calculation found for "
-			TC_BOLD "%s" TC_RST "\n", tyear);
+		printec("No inYear calculation found for #BOLD#%s#RST#\n",
+			tyear);
 		goto out_free_json;
 	}
 
@@ -1536,8 +1514,7 @@ static int list_calculations(int argc, char *argv[])
 
 	err = mtd_ic_sa_list_calculations(qs, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get calculations list. (%s)\n%s\n",
+		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -1658,8 +1635,7 @@ static void get_period(char **start, char **end)
 
 	err = mtd_sa_se_list_obligations(SEID, NULL, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get list of obligations. (%s)\n%s\n",
+		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -1733,8 +1709,7 @@ static int list_periods(int argc, char *argv[])
 
 	err = mtd_sa_se_list_obligations(SEID, qs, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get list of obligations. (%s)\n%s\n",
+		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		free(jbuf);
 		return -1;
@@ -1804,7 +1779,7 @@ again:
 	ac_str_chomp(submit);
 	ret = regexec(&re, submit, 1, pmatch, 0);
 	if (ret != 0) {
-		printf(ERROR "Invalid name\n");
+		printec("Invalid name\n");
 		goto again;
 	}
 
@@ -1819,8 +1794,7 @@ again:
 	ret = -1;
 	err = mtd_sa_sa_create_account(&dsctx, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't add savings account. (%s)\n%s\n",
+		printec("Couldn't add savings account. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -1851,8 +1825,7 @@ static int view_savings_accounts(int argc, char *argv[])
 
 	err = mtd_sa_sa_list_accounts(&jbuf);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
-		fprintf(stderr,
-			ERROR "Couldn't get list of savings accounts. "
+		printec("Couldn't get list of savings accounts. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
 		free(jbuf);
 		return -1;
@@ -1887,8 +1860,7 @@ static int view_savings_accounts(int argc, char *argv[])
 
 		err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
 		if (err) {
-			fprintf(stderr,
-				ERROR "Couldn't retrieve account details. "
+			printec("Couldn't retrieve account details. "
 				"(%s)\n%s\n", mtd_err2str(err), jbuf);
 			free(jbuf);
 			goto out_free;
@@ -1935,9 +1907,8 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 
 	err = mtd_sa_sa_list_accounts(&jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get list of savings accounts. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		printec("Couldn't get list of savings accounts. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		free(jbuf);
 		return -1;
 	}
@@ -2001,18 +1972,17 @@ static int amend_savings_account(int argc, char *argv[])
 
 	said = ac_slist_nth_data(accounts, atoi(submit) - 1);
 	if (!said) {
-		fprintf(stderr, ERROR "No such account index\n");
+		printec("No such account index\n");
 		goto out_free;
 	}
 	err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
-		fprintf(stderr,
-			ERROR "Couldn't retrieve account details. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		printec("Couldn't retrieve account details. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
 	if (mtd_http_status_code(jbuf) == MTD_HTTP_NOT_FOUND) {
-		fprintf(stderr, ERROR "No such Savings Account\n");
+		printec("No such Savings Account\n");
 		goto out_free;
 	}
 
@@ -2030,8 +2000,7 @@ static int amend_savings_account(int argc, char *argv[])
 		 "/tmp/.itsa_savings_account.tmp.%d.json", getpid());
 	tmpfd = open(tpath, O_CREAT|O_TRUNC|O_RDWR|O_EXCL, 0666);
 	if (tmpfd == -1) {
-		fprintf(stderr,
-			ERROR "Couldn't open %s in %s\n", tpath, __func__);
+		printec("Couldn't open %s in %s\n", tpath, __func__);
 		perror("open");
 		goto out_free;
 	}
@@ -2051,8 +2020,7 @@ static int amend_savings_account(int argc, char *argv[])
 	free(jbuf);
 	err = mtd_sa_sa_update_annual_summary(&dsctx, said, tyear, &jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't update Savings Account. (%s)\n%s\n",
+		printec("Couldn't update Savings Account. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_close_tmpfd;
 	}
@@ -2130,8 +2098,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	printf(INFO "Looking up SEID...\n");
 	err = mtd_sa_se_list_employments(&jbuf);
 	if (err) {
-		fprintf(stderr,
-			ERROR "Couldn't get list of employments. (%s)\n%s\n",
+		printec("Couldn't get list of employments. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	}
@@ -2140,7 +2107,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	employment = json_array_get(result, json_array_size(result) - 1);
 	seid = json_object_get(employment, "id");
 	if (!seid) {
-		printf(ERROR "No employments found\n%s\n", jbuf);
+		printec("No employments found\n%s\n", jbuf);
 		goto out_free;
 	}
 
@@ -2150,9 +2117,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
 	config = json_load_file(path, 0, &error);
 	if (!config) {
-		fprintf(stderr,
-			ERROR "Couldn't open itsa/config.json: %s\n",
-			error.text);
+		printec("Couldn't open itsa/config.json: %s\n", error.text);
 		goto out_free;
 	}
 
@@ -2197,7 +2162,7 @@ static int read_config(void)
 
 	root = json_load_file(path, 0, NULL);
 	if (!root) {
-		printf(ERROR "Unable to open config : %s\n", path);
+		printec("Unable to open config : %s\n", path);
 		return -1;
 	}
 
@@ -2268,7 +2233,7 @@ static const char *get_conf_dir(char *path)
 	snprintf(path, PATH_MAX, "%s/.config/itsa", home_dir);
 	dfd = open(home_dir, O_PATH|O_DIRECTORY);
 	if (dfd == -1) {
-		fprintf(stderr, ERROR "open: Can't open %s\n", home_dir);
+		printec("open: Can't open %s\n", home_dir);
 		exit(EXIT_FAILURE);
 	}
 
@@ -2359,7 +2324,7 @@ int main(int argc, char *argv[])
 	flags |= MTD_OPT_ACT_OTHER_DIRECT;
 	err = mtd_init(flags, &cfg);
 	if (err) {
-		fprintf(stderr, ERROR "%s\n", mtd_err2str(err));
+		printec("%s\n", mtd_err2str(err));
 		exit(EXIT_FAILURE);
 	}
 
