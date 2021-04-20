@@ -45,7 +45,6 @@
 #define MSG_WARN		TC_HI_YELLOW "WARNINGS" TC_RST
 #define MSG_ERR			TC_HI_RED "ERRORS" TC_RST
 
-#define INFO			"[" TC_BLUE "INFO" TC_RST "] "
 #define CONFIRM			"[" TC_CHARC "CONFIRMATION" TC_RST "] "
 #define WARNING			"[" TC_HI_YELLOW "WARNING" TC_RST "] "
 
@@ -54,6 +53,7 @@
 
 #define TAX_YEAR_SZ		7
 
+#define INFO	"[#INFO#INFO#RST#] "
 #define CRYSTALLISATION_DECLARATION \
 INFO "Before you can submit the information displayed here in response\n"\
 INFO "to your notice to file from HM Revenue & Customs, you must read\n"\
@@ -755,8 +755,8 @@ again:
 		goto out_free;
 	} else if (err == -MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep, &state);
-		printf(INFO "Trying to get calculation metadata again in "
-		       TC_BOLD "%d" TC_RST " second(s)\n", fib_sleep);
+		printic("Trying to get calculation metadata again in "
+			"#BOLD#%d#RST# second(s)\n", fib_sleep);
 		fflush(stdout);
 		sleep(fib_sleep);
 
@@ -868,7 +868,7 @@ static int crystallise(int argc, char *argv[])
 	*extra_hdrs = NULL;
 
 	printf("\n");
-	printf(CRYSTALLISATION_DECLARATION);
+	printc(CRYSTALLISATION_DECLARATION);
 	printf("\n");
 	printf(CONFIRM "Crystallise this TAX return? (y/N)> ");
 
@@ -877,10 +877,10 @@ static int crystallise(int argc, char *argv[])
 		goto out_ok;
 
 	printf("\n");
-	printf(INFO "About to " TC_TANG "crystallise" TC_RST " for "
-	       TC_BOLD "%s" TC_RST "\n\n", tyear);
-	printf(INFO "As a final check measure, just enter 'i agree' at the\n");
-	printf(INFO "prompt. Anything else will abandon the process.\n");
+	printic("About to #TANG#crystallise#RST# for #BOLD#%s#RST#\n\n",
+		tyear);
+	printic("As a final check measure, just enter 'i agree' at the\n");
+	printic("prompt. Anything else will abandon the process.\n");
 	printf("\n");
 	printf(CONFIRM "Enter (without the quotes) 'i agree'> ");
 
@@ -1340,7 +1340,7 @@ static int submit_eop_statement(int argc, char *argv[])
 	if (err)
 		return -1;
 
-	printf("\n" EOP_DECLARATION, tax_year);
+	printc("\n" EOP_DECLARATION, tax_year);
 	printf("\n" CONFIRM "(y/N)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || (*submit != 'y' && *submit != 'Y'))
@@ -1753,9 +1753,8 @@ static int add_savings_account(void)
 		return -1;
 	}
 
-	printf(INFO
-	       "Enter a friendly account name, allowed characters are :-\n"
-	       "\n\t" TC_BOLD SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS TC_RST "\n");
+	printic("Enter a friendly account name, allowed characters are :-\n"
+		"\n\t#BOLD#" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "#RST#\n");
 
 again:
 	printf("\n" CONFIRM "Name> ");
@@ -2079,7 +2078,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	if (err)
 		return err;
 
-	printf(INFO "Looking up SEID...\n");
+	printic("Looking up SEID...\n");
 	err = mtd_sa_se_list_employments(&jbuf);
 	if (err) {
 		printec("Couldn't get list of employments. (%s)\n%s\n",
@@ -2123,10 +2122,10 @@ out_free:
 
 static void print_api_info(void)
 {
-	printf(INFO "***\n");
-	printf(INFO "*** Using %s API\n",
-	       is_prod_api ? TC_RED"PRODUCTION"TC_RST : TC_TANG"TEST"TC_RST);
-	printf(INFO "***\n\n");
+	printic("***\n");
+	printic("*** Using %s API\n",
+		is_prod_api ? "#RED#PRODUCTION#RST#" : "#TANG#TEST#RST#");
+	printic("***\n\n");
 }
 
 static int read_config(void)
