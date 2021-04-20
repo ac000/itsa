@@ -41,9 +41,9 @@
 
 #define list_for_each(list)	for ( ; list; list = list->next)
 
-#define MSG_INFO		TC_HI_BLUE "INFO" TC_RST
-#define MSG_WARN		TC_HI_YELLOW "WARNINGS" TC_RST
-#define MSG_ERR			TC_HI_RED "ERRORS" TC_RST
+#define MSG_INFO		"#HI_BLUE#INFO#RST#"
+#define MSG_WARN		"#HI_YELLOW#WARNINGS#RST#"
+#define MSG_ERR			"#HI_RED#ERRORS#RST#"
 
 #define STRUE			TC_HI_GREEN "t" TC_RST
 #define SFALSE			TC_HI_RED "f" TC_RST
