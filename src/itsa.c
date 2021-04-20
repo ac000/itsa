@@ -46,7 +46,6 @@
 #define MSG_ERR			TC_HI_RED "ERRORS" TC_RST
 
 #define CONFIRM			"[" TC_CHARC "CONFIRMATION" TC_RST "] "
-#define WARNING			"[" TC_HI_YELLOW "WARNING" TC_RST "] "
 
 #define STRUE			TC_HI_GREEN "t" TC_RST
 #define SFALSE			TC_HI_RED "f" TC_RST
@@ -2053,8 +2052,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 			char *s;
 			char submit[3];
 
-			printf(WARNING "Existing libmtdac config found @ %s\n",
-			       path);
+			printwc("Existing libmtdac config found @ %s\n", path);
 			printf(CONFIRM "Continue? (y/N)> ");
 			s = fgets(submit, sizeof(submit), stdin);
 			if (!s || (*submit != 'y' && *submit != 'Y'))
