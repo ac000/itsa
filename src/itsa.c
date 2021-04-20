@@ -45,8 +45,6 @@
 #define MSG_WARN		TC_HI_YELLOW "WARNINGS" TC_RST
 #define MSG_ERR			TC_HI_RED "ERRORS" TC_RST
 
-#define CONFIRM			"[" TC_CHARC "CONFIRMATION" TC_RST "] "
-
 #define STRUE			TC_HI_GREEN "t" TC_RST
 #define SFALSE			TC_HI_RED "f" TC_RST
 
@@ -869,7 +867,7 @@ static int crystallise(int argc, char *argv[])
 	printf("\n");
 	printc(CRYSTALLISATION_DECLARATION);
 	printf("\n");
-	printf(CONFIRM "Crystallise this TAX return? (y/N)> ");
+	printcc("Crystallise this TAX return? (y/N)> ");
 
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || (*submit != 'y' && *submit != 'Y'))
@@ -881,7 +879,7 @@ static int crystallise(int argc, char *argv[])
 	printic("As a final check measure, just enter 'i agree' at the\n");
 	printic("prompt. Anything else will abandon the process.\n");
 	printf("\n");
-	printf(CONFIRM "Enter (without the quotes) 'i agree'> ");
+	printcc("Enter (without the quotes) 'i agree'> ");
 
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || strcmp(submit, "i agree\n") != 0)
@@ -929,10 +927,9 @@ static int submit_eop_obligation(const char *start, const char *end)
 	int ret = -1;
 	int err;
 
-	printf(CONFIRM
-	       "Submit End of Period Statement for "
-	       TC_BOLD "%s" TC_RST " to " TC_BOLD "%s" TC_RST "\n\n"
-	       CONFIRM "(y/N)> ", start, end);
+	printcc("Submit End of Period Statement for #BOLD#%s#RST# to "
+		"#BOLD#%s#RST#\n\n", start, end);
+	printcc("(y/N)> ");
 
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || (*submit != 'y' && *submit != 'Y'))
@@ -1161,7 +1158,8 @@ static int trigger_calculation(const char *tax_year)
 	if (!calc_err) {
 		char submit[3];
 
-		printf("\n" CONFIRM "Display full calculation? (y/N)> ");
+		printf("\n");
+		printcc("Display full calculation? (y/N)> ");
 		s = fgets(submit, sizeof(submit), stdin);
 		if (s && (*submit == 'y' || *submit == 'Y')) {
 			err = display_individual_calculations(cid, 0);
@@ -1236,7 +1234,8 @@ again:
 		goto out_free_json;
 	json_dumpfd(result, tmpfd, JSON_INDENT(4));
 	lseek(tmpfd, 0, SEEK_SET);
-	printf("\n" CONFIRM "Submit (s), Edit (e), Quit (Q)> ");
+	printf("\n");
+	printcc("Submit (s), Edit (e), Quit (Q)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s)
 		goto again;
@@ -1339,8 +1338,8 @@ static int submit_eop_statement(int argc, char *argv[])
 	if (err)
 		return -1;
 
-	printc("\n" EOP_DECLARATION, tax_year);
-	printf("\n" CONFIRM "(y/N)> ");
+	printc("\n" EOP_DECLARATION "\n", tax_year);
+	printcc("(y/N)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || (*submit != 'y' && *submit != 'Y'))
 		return 0;
@@ -1535,7 +1534,8 @@ static int list_calculations(int argc, char *argv[])
 		ac_slist_add(&calcs, strdup(id));
         }
 
-	printf("\n" CONFIRM "Select a calculation to view (n) or quit (Q)> ");
+	printf("\n");
+	printcc("Select a calculation to view (n) or quit (Q)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || *submit < '1' || *submit > '9')
 		goto out_free_json;
@@ -1570,7 +1570,7 @@ static int __period_update(const char *start, const char *end,
 
 	get_data(start, end, &income, &expenses);
 
-	printf(CONFIRM "Submit? (y/N)> ");
+	printcc("Submit? (y/N)> ");
 	s = fgets(submit, sizeof(submit), stdin);
         if (!s || (*submit != 'y' && *submit != 'Y'))
                 return 0;
@@ -1756,7 +1756,8 @@ static int add_savings_account(void)
 		"\n\t#BOLD#" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "#RST#\n");
 
 again:
-	printf("\n" CONFIRM "Name> ");
+	printf("\n");
+	printcc("Name> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || *submit == '\n')
 		return 0;
@@ -1948,7 +1949,8 @@ static int amend_savings_account(int argc, char *argv[])
 	tyear = argv[2];
 
 	get_savings_accounts_list(&accounts);
-	printf("\n" CONFIRM "Select account to edit (n) or quit (Q)> ");
+	printf("\n");
+	printcc("Select account to edit (n) or quit (Q)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || *submit < '1' || *submit > '9')
 		goto out_free;
@@ -2053,7 +2055,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 			char submit[3];
 
 			printwc("Existing libmtdac config found @ %s\n", path);
-			printf(CONFIRM "Continue? (y/N)> ");
+			printcc("Continue? (y/N)> ");
 			s = fgets(submit, sizeof(submit), stdin);
 			if (!s || (*submit != 'y' && *submit != 'Y'))
 				return 0;
