@@ -157,7 +157,7 @@ Currently recognised values are; *debug* & *info*
 ### VISUAL & EDITOR
 
 For some things itsa will open an editor, to determine what editor to use,
-itsa will first check the **VISUAL** ebvironment variable and execute what
+itsa will first check the **VISUAL** environment variable and execute what
 that's set to.
 
 If that isn't set it will execute whatever **EDITOR** is set to.
