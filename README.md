@@ -19,6 +19,7 @@ itsa currently supports the following actions
   - Crystallise a tax return
   - List/view tax calculations
   - View an End-of-Year tax/nics estimate
+  - Add/view/amend savings accounts
 
 Currently it gets the required accounting data from a GNUCash SQLite backed
 file.
