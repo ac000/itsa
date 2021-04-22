@@ -45,8 +45,8 @@
 #define MSG_WARN		"#HI_YELLOW#WARNINGS#RST#"
 #define MSG_ERR			"#HI_RED#ERRORS#RST#"
 
-#define STRUE			TC_HI_GREEN "t" TC_RST
-#define SFALSE			TC_HI_RED "f" TC_RST
+#define STRUE			"#HI_GREEN#t#RST#"
+#define SFALSE			"#HI_RED#f#RST#"
 
 #define TAX_YEAR_SZ		7
 
@@ -248,15 +248,15 @@ static const char *get_period_color(const char *start, const char *end,
 	dt = mktime(&dtm) + 86400 - 1;
 
 	if (met && now > dt)
-		return TC_GREEN;
+		return "#GREEN#";
 	if (now > et && now <= dt)
-		return TC_TANG;
+		return "#TANG#";
 	if (now >= st && now <= et)
 		return "";
 	if (!met && now > dt)
-		return TC_RED;
+		return "#RED#";
 
-	return TC_CHARC;
+	return "#CHARC#";
 }
 
 static char *get_tax_year(const char *date, char *buf)
@@ -363,21 +363,21 @@ static void get_data(const char *start, const char *end, long *income,
 	sqlite3_finalize(trans_stmt);
 	sqlite3_close(db);
 
-	printf("Items for period " TC_BOLD "%s" TC_RST " to " TC_BOLD "%s"
-	       TC_RST "\n\n", start, end);
-	printf(TC_GREEN "  Income(s) :-" TC_RST "\n");
+	printc("Items for period #BOLD#%s#RST# to #BOLD#%s#RST#\n\n",
+	       start, end);
+	printc("#GREEN#  Income(s) :-#RST#\n");
 	p = i_list;
 	list_for_each(p)
 		printf("    %s\n", (char *)p->data);
-	printf(TC_CHARC "%79s" TC_RST, "------------\n");
-	printf(TC_BOLD "%77.2f" TC_RST "\n", *income / 100.0f);
+	printc("#CHARC#%79s#RST#", "------------\n");
+	printc("#BOLD#%77.2f#RST#\n", *income / 100.0f);
 	printf("\n");
-	printf(TC_RED "  Expense(s) :-" TC_RST "\n");
+	printc("#RED#  Expense(s) :-#RST#\n");
 	p = e_list;
 	list_for_each(p)
 		printf("    %s\n", (char *)p->data);
-	printf(TC_CHARC "%79s" TC_RST, "------------\n");
-	printf(TC_BOLD "%77.2f" TC_RST "\n", *expenses / 100.0f);
+	printc("#CHARC#%79s#RST#", "------------\n");
+	printc("#BOLD#%77.2f#RST#\n", *expenses / 100.0f);
 
 	ac_slist_destroy(&i_list, free);
 	ac_slist_destroy(&e_list, free);
@@ -394,9 +394,7 @@ static void display_messages(const json_t *result, const char *fmt,
 	if (!msgs)
 		return;
 
-	printf("\n "
-	       TC_CHARC "---- " TC_RST "%s"  TC_CHARC " ----" TC_RST "\n",
-	       fmt);
+	printc("\n #CHARC#----#RST# %s #CHARC#----#RST#\n", fmt);
 
 	json_array_foreach(msgs, index, msg) {
 		json_t *text;
@@ -442,7 +440,7 @@ static void print_bread_crumb(const char *bread_crumb[])
 	int len = 0;
 
 	if (!*bread_crumb) {
-		printf(" " TC_BOLD "/" TC_RST "\n");
+		printc(" #BOLD#/#RST#\n");
 		return;
 	}
 
@@ -450,7 +448,7 @@ static void print_bread_crumb(const char *bread_crumb[])
 		len += snprintf(str + len, sizeof(str) - len, "%s / ",
 				*bread_crumb);
 	str[len - 3] = '\0';
-	printf(TC_BOLD " %s" TC_RST "\n", str);
+	printc("#BOLD# %s#RST#\n", str);
 }
 
 #define MAX_BREAD_CRUMB_LVL		16
@@ -519,7 +517,7 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 			if (printed)
 				continue;
 		}
-		printf(TC_CHARC " %*s :" TC_RST " %s\n", JKEY_FW, key, val);
+		printc("#CHARC# %*s :#RST# %s\n", JKEY_FW, key, val);
 		continue;
 
 decr_level:
@@ -565,12 +563,12 @@ static int display_end_of_year_est(const char *cid)
 
 	result = get_result_json(jbuf);
 
-	printf(TC_BOLD " Summary" TC_RST ":-\n");
+	printc("#BOLD# Summary#RST#:-\n");
 	obj = json_object_get(result, "summary");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
 	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printf(TC_BOLD " Details" TC_RST ":-\n");
+	printc("#BOLD# Details#RST#:-\n");
 	obj = json_object_get(result, "detail");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
@@ -605,12 +603,12 @@ static int display_calulated_a_d_r(const char *cid)
 
 	result = get_result_json(jbuf);
 
-	printf(TC_BOLD " Summary" TC_RST ":-\n");
+	printc("#BOLD# Summary#RST#:-\n");
 	obj = json_object_get(result, "summary");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
 	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printf(TC_BOLD " Details" TC_RST ":-\n");
+	printc("#BOLD# Details#RST#:-\n");
 	obj = json_object_get(result, "detail");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
@@ -644,12 +642,12 @@ static int display_calulated_income_tax_nics(const char *cid)
 
 	result = get_result_json(jbuf);
 
-	printf(TC_BOLD " Summary" TC_RST ":-\n");
+	printc("#BOLD# Summary#RST#:-\n");
 	obj = json_object_get(result, "summary");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
 	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printf(TC_BOLD " Details" TC_RST ":-\n");
+	printc("#BOLD# Details#RST#:-\n");
 	obj = json_object_get(result, "detail");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
@@ -683,12 +681,12 @@ static int display_taxable_income(const char *cid)
 
 	result = get_result_json(jbuf);
 
-	printf(TC_BOLD " Summary" TC_RST ":-\n");
+	printc("#BOLD# Summary#RST#:-\n");
 	obj = json_object_get(result, "summary");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
 	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printf(TC_BOLD " Details" TC_RST ":-\n");
+	printc("#BOLD# Details#RST#:-\n");
 	obj = json_object_get(result, "detail");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
@@ -802,7 +800,7 @@ again:
 			continue;
 		}
 
-		printf(TC_CHARC "%25s :" TC_RST " %s\n", key, val);
+		printc("#CHARC#%25s :#RST# %s\n", key, val);
 	}
 
 	ret = 0;
@@ -985,11 +983,11 @@ static int get_eop_obligations(void)
         result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
 
-	printf(TC_CHARC "  %12s %11s %13s %15s %7s" TC_RST "\n",
+	printc("#CHARC#  %12s %11s %13s %15s %7s#RST#\n",
 	       "start", "end", "due", "status", "@" );
-	printf(TC_CHARC
+	printc("#CHARC#"
 	       " ------------------------------------------------------------"
-	       "---------" TC_RST "\n");
+	       "---------#RST#\n");
 	json_array_foreach(obs, index, period) {
 		json_t *start_obj = json_object_get(period, "start");
 		json_t *end_obj = json_object_get(period, "end");
@@ -1000,11 +998,10 @@ static int get_eop_obligations(void)
 		const char *due = json_string_value(due_obj);
 		bool met = processed ? true : false;
 
-		printf("%s  %15s %12s %13s %9s%s" TC_HI_GREEN "%15s"
-		       TC_RST "\n",
+		printc("%s  %15s %12s %13s %9s%s#HI_GREEN#%15s#RST#\n",
 		       get_period_color(start, end, due, met),
 		       start, end, due, processed ? "F" : "O",
-		       TC_RST,
+		       "#RST#",
 		       processed ? json_string_value(processed) : "");
         }
 
@@ -1025,7 +1022,7 @@ static int biss_se_summary(const char *tax_year)
 	json_t *val;
 	char *jbuf;
 	const char *key;
-	char *plcolor = TC_GREEN;
+	char *plcolor = "#GREEN#";
 	char *pltext = "Profit";
 	char qs[56] = "\0";
 	int ret = -1;
@@ -1046,27 +1043,27 @@ static int biss_se_summary(const char *tax_year)
 
 	result = get_result_json(jbuf);
 
-	printf(TC_BOLD " Total" TC_RST ":-\n");
+	printc("#BOLD# Total#RST#:-\n");
 	obj = json_object_get(result, "total");
 	json_object_foreach(obj, key, val)
-		printf(TC_CHARC "%23s :" TC_RST " %.2f\n", key,
+		printc("#CHARC#%23s :#RST# %.2f\n", key,
 		       json_number_value(val));
 
 	printf("\n");
 	obj = json_object_get(result, "accountingAdjustments");
-	printf(TC_CHARC "%23s :" TC_RST " %.2f\n", "accountingAdjustments",
+	printc("#CHARC#%23s :#RST# %.2f\n", "accountingAdjustments",
 	       json_number_value(obj));
 
 	printf("\n");
 	obj = json_object_get(result, "profit");
 	if (!obj) {
 		obj = json_object_get(result, "loss");
-		plcolor = TC_RED;
+		plcolor = "#RED#";
 		pltext = "Loss";
 	}
-	printf("%s %s" TC_RST ":-\n", plcolor, pltext);
+	printc("%s %s#RST#:-\n", plcolor, pltext);
 	json_object_foreach(obj, key, val)
-		printf(TC_CHARC "%23s :" TC_RST " %.2f\n", key,
+		printc("#CHARC#%23s :#RST# %.2f\n", key,
 		       json_number_value(val));
 
 	json_decref(result);
@@ -1100,7 +1097,7 @@ static bool print_c4nic_excempt_type(const char *key, json_t *value)
 		return false;
 
 	code = json_string_value(value);
-	printf(TC_CHARC " %*s :" TC_RST " %s (%s)\n", JKEY_FW, key, code,
+	printc("#CHARC# %*s :#RST# %s (%s)\n", JKEY_FW, key, code,
 	       class4_nic_ecode_map[atoi(code)].desc);
 
 	return true;
@@ -1509,11 +1506,11 @@ static int list_calculations(int argc, char *argv[])
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "calculations");
 
-	printf(TC_CHARC "  %3s  %24s %25s %14s" TC_RST "\n",
+	printc("#CHARC#  %3s %25s %25s %14s #RST#\n",
 	       "idx", "calculation_id", "timestamp", "type");
-	printf(TC_CHARC
+	printc("#CHARC#"
 	       " ------------------------------------------------------------"
-	       "-----------------" TC_RST "\n");
+	       "-----------------#RST#\n");
 	json_array_foreach(obs, index, calculation) {
 		json_t *id_obj = json_object_get(calculation, "id");
 		json_t *ts_obj = json_object_get(calculation,
@@ -1528,7 +1525,7 @@ static int list_calculations(int argc, char *argv[])
 		date[10] = '\0';
 		memcpy(stime, ts + 11, 5);
 		stime[5] = '\0';
-		printf("  " TC_BOLD "%2zu" TC_RST "  %36s %11s %s %16s\n",
+		printc("  #BOLD#%2zu#RST#%38s %11s %s %16s\n",
 		       index + 1, id, date, stime, json_string_value(type));
 
 		ac_slist_add(&calcs, strdup(id));
@@ -1704,11 +1701,11 @@ static int list_periods(int argc, char *argv[])
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
 
-	printf(TC_CHARC "  %14s %18s %11s %12s %8s" TC_RST "\n",
+	printc("#CHARC#  %14s %18s %11s %12s %8s#RST#\n",
 	       "period_id", "start", "end", "due", "met" );
-	printf(TC_CHARC
+	printc("#CHARC#"
 	       " ------------------------------------------------------------"
-	       "---------" TC_RST "\n");
+	       "---------#RST#\n");
 	json_array_foreach(obs, index, period) {
 		json_t *start_obj = json_object_get(period, "start");
 		json_t *end_obj = json_object_get(period, "end");
@@ -1718,10 +1715,10 @@ static int list_periods(int argc, char *argv[])
 		const char *end = json_string_value(end_obj);
 		const char *due = json_string_value(due_obj);
 
-		printf("%s  %s_%-14s %-12s %-12s %-12s%s %s\n",
+		printc("%s  %s_%-14s %-12s %-12s %-12s%s %s\n",
 		       get_period_color(start, end, due, json_is_true(met)),
 		       start, end, start, end, due,
-		       TC_RST,
+		       "#RST#",
 		       json_is_true(met) ? STRUE : SFALSE);
         }
 
@@ -1823,10 +1820,10 @@ static int view_savings_accounts(int argc, char *argv[])
 
 	printsc("Savings Accounts for #BOLD#%s#RST#\n", tyear);
 
-	printf("\n" TC_CHARC "  %8s %26s" TC_RST "\n", "id", "name");
-	printf(TC_CHARC
+	printc("\n#CHARC#  %8s %26s#RST#\n", "id", "name");
+	printc("#CHARC#"
 	       " ------------------------------------------------------------"
-	       TC_RST "\n");
+	       "#RST#\n");
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "savingsAccounts");
@@ -1861,11 +1858,11 @@ static int view_savings_accounts(int argc, char *argv[])
 		printf("  %-25s %-34s\n",
 		       json_string_value(id), json_string_value(name));
 		if (taxed_int >= 0.0f)
-			printf(TC_CHARC "%25s" TC_RST TC_BOLD "%12.2f" TC_RST
-			       "\n", "taxedUkInterest : ", taxed_int);
+			printc("#CHARC#%25s#RST##BOLD#%12.2f#RST#\n",
+			       "taxedUkInterest : ", taxed_int);
 		if (untaxed_int >= 0.0f)
-			printf(TC_CHARC "%25s" TC_RST TC_BOLD "%12.2f" TC_RST
-			       "\n","untaxedUkInterest : ", untaxed_int);
+			printc("#CHARC#%25s#RST##BOLD#%12.2f#RST#\n",
+			       "untaxedUkInterest : ", untaxed_int);
 		printf("\n");
 
 		json_decref(res);
@@ -1900,10 +1897,10 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "savingsAccounts");
 
-	printf(TC_CHARC "  idx %9s %26s" TC_RST "\n", "id", "name");
-	printf(TC_CHARC
+	printc("#CHARC#  idx %9s %26s#RST#\n", "id", "name");
+	printc("#CHARC#"
 	       " ------------------------------------------------------------"
-	       "---" TC_RST "\n");
+	       "---#RST#\n");
 	json_array_foreach(obs, index, account) {
 		json_t *id = json_object_get(account, "id");
 		json_t *name = json_object_get(account, "accountName");
