@@ -170,6 +170,9 @@ If neither of those are set, itsa will default to **vi**.
 By default itsa will use colourised output. This can be disabled by setting
 the **NO_COLOR** environment variable. Its value is unimportant (can be empty).
 
+This can be overridden by setting the config.json *"no_color"* option to
+*false*.
+
 # License
 
 itsa is licensed under the GNU General Public License (LGPL) version 2

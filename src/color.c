@@ -82,6 +82,7 @@ static void *srealloc(char **base, size_t extra, char **ptr, size_t *alloc,
 	return *base;
 }
 
+extern bool NO_COLOR;
 static char *parser(const char *buf)
 {
 	char *new = malloc(ALLOC_SZ);
@@ -116,7 +117,7 @@ static char *parser(const char *buf)
 		 */
 		in_color = false;
 		*cptr = '\0';
-		if (!getenv("NO_COLOR"))
+		if (!NO_COLOR)
 			code = lookup(color);
 
 		if (code && *code == '\0') {

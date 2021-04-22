@@ -113,6 +113,8 @@ static struct {
 } itsa_config;
 #define SEID	itsa_config.seid
 
+bool NO_COLOR;
+
 static char const *extra_hdrs[5];
 
 static bool is_prod_api;
@@ -2129,6 +2131,7 @@ static int read_config(void)
 	json_t *root;
 	json_t *prod_api;
 	json_t *gnc_obj;
+	json_t *no_color_obj;
 	json_t *seid_obj;
 	json_t *client_secrets_obj;
 	json_t *client_id_obj;
@@ -2163,6 +2166,11 @@ static int read_config(void)
 					    "client_secret");
 	itsa_config.client_secret = client_secret_obj ?
 		strdup(json_string_value(client_secret_obj)) : NULL;
+
+	no_color_obj = json_object_get(root, "no_color");
+	if ((no_color_obj && json_is_true(no_color_obj)) ||
+	    (!no_color_obj && getenv("NO_COLOR")))
+		NO_COLOR = true;
 
 	json_decref(root);
 
