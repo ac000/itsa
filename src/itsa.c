@@ -107,7 +107,6 @@ static const struct api_error ic_end_of_year_est_errors[] = {
 static struct {
 	const char *gnc;
 	const char *seid;
-	const char *nino;
 	const char *client_id;
 	const char *client_secret;
 } itsa_config;
@@ -143,7 +142,6 @@ static void free_config(void)
 {
 	free((void *)itsa_config.gnc);
 	free((void *)itsa_config.seid);
-	free((void *)itsa_config.nino);
 	free((void *)itsa_config.client_id);
 	free((void *)itsa_config.client_secret);
 }
@@ -2131,7 +2129,6 @@ static int read_config(void)
 	json_t *prod_api;
 	json_t *gnc_obj;
 	json_t *seid_obj;
-	json_t *nino_obj;
 	json_t *client_secrets_obj;
 	json_t *client_id_obj;
 	json_t *client_secret_obj;
@@ -2153,10 +2150,6 @@ static int read_config(void)
 
 	seid_obj = json_object_get(root, "self_employment_id");
 	itsa_config.seid = seid_obj ? strdup(json_string_value(seid_obj)) :
-				      NULL;
-
-	nino_obj = json_object_get(root, "national_insurance_no");
-	itsa_config.nino = nino_obj ? strdup(json_string_value(nino_obj)) :
 				      NULL;
 
 	client_secrets_obj = json_object_get(root, "client_secrets");
