@@ -165,6 +165,11 @@ If that isn't set it will execute whatever **EDITOR** is set to.
 
 If neither of those are set, itsa will default to **vi**.
 
+### NO_COLOR
+
+By default itsa will use colourised output. This can be disabled by setting
+the **NO_COLOR** environment variable. Its value is unimportant (can be empty).
+
 # License
 
 itsa is licensed under the GNU General Public License (LGPL) version 2
