@@ -2,14 +2,17 @@
 
 When sending code, please either send signed-off patches or a pull request
 with signed-off commits. This means adding a line that says
-"Signed-off-by: Name \<Email\>" at the end of each commit, indicating that
-you wrote the code and/or have the right to contribute it to this project.
-
-E.g
+"Signed-off-by: Name \<Email\>" at the end of each commit. E.g
 
 ```
 Signed-off-by: Andrew Clayton <andrew@digital-domain.net>
 ```
+
+This signifies that you have read/understood/and agreed to the
+[Developer's Certificate of Origin](DCO). Essentially indicating that you
+wrote the code and/or have the right to contribute it to this project.
+
+This is **not** a CLA.
 
 Also, please write good git commit messages. A good commit message looks like
 this:
@@ -34,9 +37,12 @@ line. The header line is what is shown by tools like gitk and shortlog, and
 should summarize the change in one readable line of text, independently of
 the longer explanation.
 
-If emailing patches, it is recommended to use git-send-email(1)
+- If emailing patches, it is recommended to use git-send-email(1).
+- If emailing a pull request it is recommended to use git-request-pull(1).
+- Pull requests can be made via GitHub.
 
 Email should be sent to the project maintainer;
+
 ```
 Andrew Clayton <andrew@digital-domain.net>
 ```
