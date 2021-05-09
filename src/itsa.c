@@ -2310,12 +2310,11 @@ int main(int argc, char *argv[])
 	}
 
 	err = dispatcher(argc, argv, &cfg);
+	if (err)
+		ret = EXIT_FAILURE;
 
 	mtd_deinit();
 	free_config();
-
-	if (err)
-		ret = EXIT_FAILURE;
 
 	exit(ret);
 }
