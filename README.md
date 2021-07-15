@@ -175,7 +175,7 @@ This can be overridden by setting the config.json *"no_color"* option to
 
 # License
 
-itsa is licensed under the GNU General Public License (LGPL) version 2
+itsa is licensed under the GNU General Public License (GPL) version 2
 
 See *COPYING* in the repository root for details.
 
