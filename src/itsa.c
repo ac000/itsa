@@ -27,9 +27,11 @@
 #include <jansson.h>
 
 #include <libmtdac/mtd.h>
-#include <libmtdac/mtd-sa.h>
-#include <libmtdac/mtd-ic.h>
+#include <libmtdac/mtd-bd.h>
 #include <libmtdac/mtd-biss.h>
+#include <libmtdac/mtd-ic.h>
+#include <libmtdac/mtd-ob.h>
+#include <libmtdac/mtd-sa.h>
 
 #include <libac.h>
 
@@ -967,12 +969,13 @@ static int get_eop_obligations(void)
 	json_t *result;
 	json_t *obs;
 	json_t *period;
+	const char *qs = "?typeOfBusiness=self-employment";
 	char *jbuf;
 	size_t index;
 	int ret = -1;
 	int err;
 
-	err = mtd_sa_se_get_end_of_period_obligations(SEID, NULL, &jbuf);
+	err = mtd_ob_list_end_of_period_obligations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get End of Period Statement(s). (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1617,7 +1620,7 @@ static void get_period(char **start, char **end)
 	char *jbuf;
 	int err;
 
-	err = mtd_sa_se_list_obligations(SEID, NULL, &jbuf);
+	err = mtd_ob_list_inc_and_expend_obligations(NULL, &jbuf);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1674,7 +1677,7 @@ static int list_periods(int argc, char *argv[])
 	json_t *result;
 	json_t *obs;
 	json_t *period;
-	char qs[32] = "\0";
+	char qs[128] = "?typeOfBusiness=self-employment";
 	int err;
 	size_t index;
 	char *jbuf;
@@ -1685,13 +1688,14 @@ static int list_periods(int argc, char *argv[])
 	}
 
 	if (argc > 2) {
-		int len;
+		int len = strlen(qs);
 
-		len = snprintf(qs, sizeof(qs), "?from=%s", argv[2]);
-		snprintf(qs + len, sizeof(qs) - len, "&to=%s", argv[3]);
+		len += snprintf(qs + len, sizeof(qs) - len, "&fromDate=%s",
+				argv[2]);
+		snprintf(qs + len, sizeof(qs) - len, "&toDate=%s", argv[3]);
 	}
 
-	err = mtd_sa_se_list_obligations(SEID, qs, &jbuf);
+	err = mtd_ob_list_inc_and_expend_obligations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1701,6 +1705,10 @@ static int list_periods(int argc, char *argv[])
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
+	if (!obs)
+		goto out_free;
+	obs = json_array_get(obs, 0);
+	obs = json_object_get(obs, "obligationDetails");
 
 	printc("#CHARC#  %14s %18s %11s %12s %8s#RST#\n",
 	       "period_id", "start", "end", "due", "met" );
@@ -1708,21 +1716,22 @@ static int list_periods(int argc, char *argv[])
 	       " ------------------------------------------------------------"
 	       "---------#RST#\n");
 	json_array_foreach(obs, index, period) {
-		json_t *start_obj = json_object_get(period, "start");
-		json_t *end_obj = json_object_get(period, "end");
-		json_t *due_obj = json_object_get(period, "due");
-		json_t *met = json_object_get(period, "met");
+		json_t *start_obj = json_object_get(period, "periodStartDate");
+		json_t *end_obj = json_object_get(period, "periodEndDate");
+		json_t *due_obj = json_object_get(period, "dueDate");
+		json_t *rec_obj = json_object_get(period, "receivedDate");
 		const char *start = json_string_value(start_obj);
 		const char *end = json_string_value(end_obj);
 		const char *due = json_string_value(due_obj);
 
 		printc("%s  %s_%-14s %-12s %-12s %-12s%s %s\n",
-		       get_period_color(start, end, due, json_is_true(met)),
+		       get_period_color(start, end, due,
+					rec_obj ? true : false),
 		       start, end, start, end, due,
-		       "#RST#",
-		       json_is_true(met) ? STRUE : SFALSE);
+		       "#RST#", rec_obj ? STRUE : SFALSE);
         }
 
+out_free:
 	json_decref(result);
 	free(jbuf);
 
@@ -2077,7 +2086,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 		return err;
 
 	printic("Looking up SEID...\n");
-	err = mtd_sa_se_list_employments(&jbuf);
+	err = mtd_bd_list(&jbuf);
 	if (err) {
 		printec("Couldn't get list of employments. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -2085,8 +2094,9 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	}
 
 	result = get_result_json(jbuf);
-	employment = json_array_get(result, json_array_size(result) - 1);
-	seid = json_object_get(employment, "id");
+	employment = json_object_get(result, "listOfBusinesses");
+	employment = json_array_get(employment, 0);
+	seid = json_object_get(employment, "businessId");
 	if (!seid) {
 		printec("No employments found\n%s\n", jbuf);
 		goto out_free;
