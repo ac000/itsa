@@ -2036,6 +2036,17 @@ out_free:
 	return ret;
 }
 
+static int init_auth(void)
+{
+	int err;
+
+	err = mtd_init_auth(MTD_EP_API_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
+	if (err)
+		printec("%s\n", mtd_err2str(err));
+
+	return err;
+}
+
 static int do_init_all(const struct mtd_cfg *cfg)
 {
 	json_t *result = NULL;
@@ -2081,7 +2092,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 		return err;
 
 	printf("\n");
-	err = mtd_init_auth();
+	err = init_auth();
 	if (err)
 		return err;
 
@@ -2246,7 +2257,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 	if (IS_CMD("init"))
 		return do_init_all(cfg);
 	if (IS_CMD("re-auth"))
-		return mtd_init_auth();
+		return init_auth();
 	if (IS_CMD("list-periods"))
 		return list_periods(argc, argv);
 	if (IS_CMD("create-period"))
