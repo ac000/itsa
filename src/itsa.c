@@ -133,7 +133,7 @@ static void disp_usage(void)
 	printf("    create-period\n");
 	printf("    update-period <period_id>\n");
 	printf("    update-annual-summary <tax_year>\n");
-	printf("    get-end-of-period-statement-obligations\n");
+	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
 	printf("    submit-end-of-period-statement <start> <end>\n");
 	printf("    crystallise <tax_year>\n");
 	printf("    list-calculations [tax_year]\n");
@@ -964,16 +964,29 @@ out_free:
 	return ret;
 }
 
-static int get_eop_obligations(void)
+static int get_eop_obligations(int argc, char *argv[])
 {
 	json_t *result;
 	json_t *obs;
 	json_t *period;
-	const char *qs = "?typeOfBusiness=self-employment";
+	char qs[128] = "?typeOfBusiness=self-employment";
 	char *jbuf;
 	size_t index;
 	int ret = -1;
 	int err;
+
+	if (argc > 2 && argc < 4) {
+		disp_usage();
+		return -1;
+	}
+
+	if (argc > 2) {
+		int len = strlen(qs);
+
+		len += snprintf(qs + len, sizeof(qs) - len, "&fromDate=%s",
+				argv[2]);
+		snprintf(qs + len, sizeof(qs) - len, "&toDate=%s", argv[3]);
+	}
 
 	err = mtd_ob_list_end_of_period_obligations(qs, &jbuf);
 	if (err) {
@@ -2269,7 +2282,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 	if (IS_CMD("submit-end-of-period-statement"))
 		return submit_eop_statement(argc, argv);
 	if (IS_CMD("get-end-of-period-statement-obligations"))
-		return get_eop_obligations();
+		return get_eop_obligations(argc, argv);
 	if (IS_CMD("crystallise"))
 		return crystallise(argc, argv);
 	if (IS_CMD("list-calculations"))

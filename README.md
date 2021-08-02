@@ -108,7 +108,7 @@ Commands
     create-period
     update-period <period_id>
     update-annual-summary <tax_year>
-    get-end-of-period-statement-obligations
+    get-end-of-period-statement-obligations [<start> <end>]
     submit-end-of-period-statement <start> <end>
     crystallise <tax_year>
     list-calculations [tax_year]
