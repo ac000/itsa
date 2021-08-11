@@ -1630,37 +1630,44 @@ static void get_period(char **start, char **end)
 	json_t *obs;
 	json_t *period;
 	size_t index;
+	const char *qs = "?typeOfBusiness=self-employment";
 	char *jbuf;
 	int err;
 
-	err = mtd_ob_list_inc_and_expend_obligations(NULL, &jbuf);
+	err = mtd_ob_list_inc_and_expend_obligations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		goto out_free_jbuf;
 	}
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
+	if (!obs)
+		goto out_free_json;
+	obs = json_array_get(obs, 0);
+	obs = json_object_get(obs, "obligationDetails");
 	json_array_foreach(obs, index, period) {
-                json_t *met;
+		json_t *status;
 		json_t *start_obj;
 		json_t *end_obj;
 
-		met = json_object_get(period, "met");
-		if (json_is_true(met))
+		status = json_object_get(period, "status");
+		if (strcmp(json_string_value(status), "Fulfilled") == 0)
 			continue;
 
-		start_obj = json_object_get(period, "start");
-		end_obj = json_object_get(period, "end");
+		start_obj = json_object_get(period, "periodStartDate");
+		end_obj = json_object_get(period, "periodEndDate");
 		*start = strdup(json_string_value(start_obj));
 		*end = strdup(json_string_value(end_obj));
 
 		break;
         }
+
+out_free_json:
 	json_decref(result);
 
-out_free:
+out_free_jbuf:
 	free(jbuf);
 }
 
