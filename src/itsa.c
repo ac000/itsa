@@ -1523,7 +1523,7 @@ static int list_calculations(int argc, char *argv[])
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "calculations");
 
-	printc("#CHARC#  %3s %25s %25s %14s #RST#\n",
+	printc("#CHARC#  %3s %26s %24s %14s #RST#\n",
 	       "idx", "calculation_id", "timestamp", "type");
 	printc("#CHARC#"
 	       " ------------------------------------------------------------"
@@ -1542,7 +1542,7 @@ static int list_calculations(int argc, char *argv[])
 		date[10] = '\0';
 		memcpy(stime, ts + 11, 5);
 		stime[5] = '\0';
-		printc("  #BOLD#%2zu#RST#%38s %11s %s %16s\n",
+		printc("  #BOLD#%2zu#RST#%39s %11s %s %11s\n",
 		       index + 1, id, date, stime, json_string_value(type));
 
 		ac_slist_add(&calcs, strdup(id));
