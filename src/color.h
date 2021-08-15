@@ -25,7 +25,7 @@
 #define TC_RST			"\e[0m"
 
 enum msg_type {
-	MT_ERROR,
+	MT_ERROR = 0,
 	MT_WARNING,
 	MT_INFO,
 	MT_CONFIRM,

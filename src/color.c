@@ -152,38 +152,27 @@ next:
 	return new;
 }
 
+static const struct {
+	const char *str;
+} msg_types[] = {
+	[MT_ERROR]	= { "[#ERROR#ERROR#RST#]"		},
+	[MT_WARNING]	= { "[#WARNING#WARNING#RST#]"		},
+	[MT_INFO]	= { "[#INFO#INFO#RST#]"			},
+	[MT_CONFIRM]	= { "[#CONFIRM#CONFIRMATION#RST#]"	},
+	[MT_SUCCESS]	= { "[#SUCCESS#OK#RST#]"		},
+};
+
 void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 {
 	va_list ap;
 	char *buf = NULL;
 	char *cstr;
 	char *str;
-	const char *tstr;
 	int len;
 
-	switch (type) {
-	case MT_ERROR:
-		tstr = "[#ERROR#ERROR#RST#] ";
-		break;
-	case MT_WARNING:
-		tstr = "[#WARNING#WARNING#RST#] ";
-		break;
-	case MT_INFO:
-		tstr = "[#INFO#INFO#RST#] ";
-		break;
-	case MT_CONFIRM:
-		tstr = "[#CONFIRM#CONFIRMATION#RST#] ";
-		break;
-	case MT_SUCCESS:
-		tstr = "[#SUCCESS#OK#RST#] ";
-		break;
-	default:
-		tstr = "";
-	}
-
-	str = malloc(strlen(fmt) + strlen(tstr) + 1);
-	memcpy(str, tstr, strlen(tstr));
-	memcpy(str + strlen(tstr), fmt, strlen(fmt) + 1);
+	len = asprintf(&str, "%s %s", msg_types[type].str, fmt);
+	if (len == -1)
+		return;
 
 	va_start(ap, fmt);
 	len = vasprintf(&buf, str, ap);
