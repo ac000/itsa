@@ -152,6 +152,24 @@ next:
 	return new;
 }
 
+static int color_print(FILE *fp, const char *fmt, va_list args)
+{
+	char *buf;
+	char *cstr;
+	int len;
+
+	len = vasprintf(&buf, fmt, args);
+	if (len == -1)
+		return -1;
+
+	cstr = parser(buf);
+	len = fprintf(fp, "%s", cstr);
+	free(buf);
+	free(cstr);
+
+	return len;
+}
+
 static const struct {
 	const char *str;
 } msg_types[] = {
@@ -165,8 +183,6 @@ static const struct {
 void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 {
 	va_list ap;
-	char *buf = NULL;
-	char *cstr;
 	char *str;
 	int len;
 
@@ -175,39 +191,16 @@ void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 		return;
 
 	va_start(ap, fmt);
-	len = vasprintf(&buf, str, ap);
+	color_print(fp, str, ap);
 	va_end(ap);
-	if (len == -1)
-		goto out_free;
-
-	cstr = parser(buf);
-	fprintf(fp, "%s", cstr);
-
-	free(cstr);
-
-out_free:
 	free(str);
-	free(buf);
 }
 
 void printc(const char *fmt, ...)
 {
 	va_list ap;
-	char *buf = NULL;
-	char *cstr;
-	int len;
 
 	va_start(ap, fmt);
-	len = vasprintf(&buf, fmt, ap);
+	color_print(stdout, fmt, ap);
 	va_end(ap);
-	if (len == -1)
-		goto out_free;
-
-	cstr = parser(buf);
-	printf("%s", cstr);
-
-	free(cstr);
-
-out_free:
-	free(buf);
 }
