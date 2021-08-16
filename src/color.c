@@ -15,13 +15,22 @@
 #include <stdarg.h>
 
 #include "color.h"
+#include "textus_coloris.h"
 
-#define MAX_COLOR_NAME		32
+#define TC_HI_YELLOW		"\e[38;5;11m"
+#define TC_HI_GREEN		"\e[38;5;10m"
+#define TC_HI_RED		"\e[38;5;9m"
+#define TC_HI_BLUE		"\e[38;5;33m"
+#define TC_GREEN		"\e[38;5;40m"
+#define TC_RED			"\e[38;5;160m"
+#define TC_BLUE			"\e[38;5;75m"
+#define TC_CHARC		"\e[38;5;8m"
+#define TC_TANG			"\e[38;5;220m"
 
-static const struct color {
-	const char *color;
-	const char *code;
-} colors[] = {
+#define TC_BOLD			"\e[1m"
+#define TC_RST			"\e[0m"
+
+static const struct tc_coloris colors[] = {
 	{ "HI_YELLOW",		TC_HI_YELLOW		},
 	{ "HI_GREEN",		TC_HI_GREEN		},
 	{ "HI_RED",		TC_HI_RED		},
@@ -51,125 +60,6 @@ static const struct color {
 	{}
 };
 
-static const char *lookup(const char *color)
-{
-	const struct color *ptr = colors;
-
-	for ( ; ptr->color != NULL; ptr++) {
-		if (strcmp(color, ptr->color) == 0)
-			return ptr->code;
-	}
-
-	return NULL;
-}
-
-#define ALLOC_SZ	64
-static void *srealloc(char **base, size_t extra, char **ptr, size_t *alloc,
-		      char **sptr)
-{
-	size_t len = *ptr - *base;
-	size_t slen = *sptr - *base;
-
-	if (len + extra < *alloc)
-		return *base;
-
-	*base = realloc(*base, *alloc + ALLOC_SZ);
-	*alloc += ALLOC_SZ;
-
-	*ptr = *base + len;
-	*sptr = *base + slen;
-
-	return *base;
-}
-
-extern bool NO_COLOR;
-static char *parser(const char *buf)
-{
-	char *new = malloc(ALLOC_SZ);
-	char *ptr = new;
-	char *sptr = new;
-	char color[MAX_COLOR_NAME];
-	char *cptr = color;
-	bool in_color = false;
-	size_t alloc = ALLOC_SZ;
-
-	while (*buf) {
-		const char *code = "\0";
-
-		*ptr = *buf;
-
-		if (*buf == '#' && !in_color) {
-			sptr = ptr;
-			cptr = color;
-			in_color = true;
-			goto next;
-		} else if (in_color && *buf != '#') {
-			*cptr = *buf;
-			cptr++;
-			goto next;
-		} else if (!in_color) {
-			goto next;
-		}
-
-		/*
-		 * in_color == true and we have a trailing '#', see if
-		 * it's a colour code.
-		 */
-		in_color = false;
-		*cptr = '\0';
-		if (!NO_COLOR)
-			code = lookup(color);
-
-		if (code && *code == '\0') {
-			ptr = sptr - 1;
-		} else if (code) {
-			size_t clen = strlen(code);
-
-			ptr = sptr;
-			new = srealloc(&new, clen, &ptr, &alloc, &sptr);
-			memcpy(ptr, code, clen);
-			ptr += clen - 1;
-		} else {
-			/*
-			 * Handle cases like
-			 *
-			 *   #XXXX##text...
-			 *
-			 * Note the extra '#' which should appear in the
-			 * output string.
-			 */
-			buf--;
-			ptr--;
-		}
-
-next:
-		new = srealloc(&new, 1, &ptr, &alloc, &sptr);
-		buf++;
-		ptr++;
-	}
-	*ptr = '\0';
-
-	return new;
-}
-
-static int color_print(FILE *fp, const char *fmt, va_list args)
-{
-	char *buf;
-	char *cstr;
-	int len;
-
-	len = vasprintf(&buf, fmt, args);
-	if (len == -1)
-		return -1;
-
-	cstr = parser(buf);
-	len = fprintf(fp, "%s", cstr);
-	free(buf);
-	free(cstr);
-
-	return len;
-}
-
 static const struct {
 	const char *str;
 } msg_types[] = {
@@ -182,7 +72,7 @@ static const struct {
 
 void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 {
-	va_list ap;
+	va_list args;
 	char *str;
 	int len;
 
@@ -190,17 +80,14 @@ void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 	if (len == -1)
 		return;
 
-	va_start(ap, fmt);
-	color_print(fp, str, ap);
-	va_end(ap);
+	va_start(args, fmt);
+	va_end(args);
+
+	tc_printv(fp, str, args);
 	free(str);
 }
 
-void printc(const char *fmt, ...)
+void set_colors(void)
 {
-	va_list ap;
-
-	va_start(ap, fmt);
-	color_print(stdout, fmt, ap);
-	va_end(ap);
+	tc_set_colors(colors);
 }

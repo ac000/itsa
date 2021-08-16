@@ -2336,6 +2336,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
+	set_colors();
 	print_api_info();
 
 	if (log_level && *log_level == 'd')
