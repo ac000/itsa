@@ -140,7 +140,7 @@ static char *cstring(const char *fmt, va_list args)
 {
 	va_list args2;
 	char *buf = NULL;
-	char *cstr;
+	char *cstr = NULL;
 	size_t buf_sz = 0;
 	int len;
 
@@ -156,21 +156,24 @@ static char *cstring(const char *fmt, va_list args)
 	/* Determine the required size of 'buf; */
 	len = vsnprintf(buf, buf_sz, fmt, args);
 	if (len < 0)
-		return NULL;
+		goto out_vargs;
 
 	buf_sz = (size_t)len + 1;
 	buf = malloc(buf_sz);
 	if (!buf)
-		return NULL;
+		goto out_vargs;
 
 	len = vsnprintf(buf, buf_sz, fmt, args2);
 	if (len < 0) {
 		free(buf);
-		return NULL;
+		goto out_vargs;
 	}
 
 	cstr = parser(buf);
 	free(buf);
+
+out_vargs:
+	va_end(args2);
 
 	return cstr;
 }
@@ -195,11 +198,13 @@ char *tc_cstringv(const char *fmt, va_list args)
 char *tc_cstring(const char *fmt, ...)
 {
 	va_list args;
+	char *s;
 
 	va_start(args, fmt);
+	s = cstring(fmt, args);
 	va_end(args);
 
-	return cstring(fmt, args);
+	return s;
 }
 
 /*
@@ -230,11 +235,13 @@ int tc_printv(FILE *fp, const char *fmt, va_list args)
 int tc_print(FILE *fp, const char *fmt, ...)
 {
 	va_list args;
+	int len;
 
 	va_start(args, fmt);
+	len = tc_printv(fp, fmt, args);
 	va_end(args);
 
-	return tc_printv(fp, fmt, args);
+	return len;
 }
 
 /*
