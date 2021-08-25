@@ -29,6 +29,7 @@
 #include <libmtdac/mtd.h>
 #include <libmtdac/mtd-bd.h>
 #include <libmtdac/mtd-biss.h>
+#include <libmtdac/mtd-ibeops.h>
 #include <libmtdac/mtd-ic.h>
 #include <libmtdac/mtd-ob.h>
 #include <libmtdac/mtd-sa.h>
@@ -937,6 +938,14 @@ static int submit_eop_obligation(const char *start, const char *end)
 		return 0;
 
 	json = ac_jsonw_init();
+	ac_jsonw_add_str(json, "typeOfBusiness", "self-employment");
+	ac_jsonw_add_str(json, "businessId", SEID);
+
+	ac_jsonw_add_object(json, "accountingPeriod");
+	ac_jsonw_add_str(json, "startDate", start);
+	ac_jsonw_add_str(json, "endDate", end);
+	ac_jsonw_end_object(json);
+
 	ac_jsonw_add_bool(json, "finalised", true);
 	ac_jsonw_end(json);
 
@@ -944,8 +953,7 @@ static int submit_eop_obligation(const char *start, const char *end)
 	dsctx.data_len = -1;
 	dsctx.src_type = MTD_DATA_SRC_BUF;
 
-	err = mtd_sa_se_submit_end_of_period_statement(&dsctx, SEID, start,
-						       end, &jbuf);
+	err = mtd_ibeops_submit_eops(&dsctx, &jbuf);
 	if (err) {
 		printec("Couldn't submit End of Period Statement. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
