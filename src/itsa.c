@@ -2330,13 +2330,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	set_colors();
+
 	if (!IS_CMD("init")) {
 		err = read_config();
 		if (err)
 			exit(EXIT_FAILURE);
 	}
 
-	set_colors();
 	print_api_info();
 
 	if (log_level && *log_level == 'd')
