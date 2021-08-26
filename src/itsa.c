@@ -111,8 +111,6 @@ static const struct api_error ic_end_of_year_est_errors[] = {
 static struct {
 	const char *gnc;
 	const char *seid;
-	const char *client_id;
-	const char *client_secret;
 } itsa_config;
 #define SEID	itsa_config.seid
 
@@ -148,8 +146,6 @@ static void free_config(void)
 {
 	free((void *)itsa_config.gnc);
 	free((void *)itsa_config.seid);
-	free((void *)itsa_config.client_id);
-	free((void *)itsa_config.client_secret);
 }
 
 /*
@@ -2182,9 +2178,6 @@ static int read_config(void)
 	json_t *gnc_obj;
 	json_t *no_color_obj;
 	json_t *seid_obj;
-	json_t *client_secrets_obj;
-	json_t *client_id_obj;
-	json_t *client_secret_obj;
 	char path[PATH_MAX];
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
@@ -2204,17 +2197,6 @@ static int read_config(void)
 	seid_obj = json_object_get(root, "self_employment_id");
 	itsa_config.seid = seid_obj ? strdup(json_string_value(seid_obj)) :
 				      NULL;
-
-	client_secrets_obj = json_object_get(root, "client_secrets");
-
-	client_id_obj = json_object_get(client_secrets_obj, "client_id");
-	itsa_config.client_id = client_id_obj ?
-		strdup(json_string_value(client_id_obj)) : NULL;
-
-	client_secret_obj = json_object_get(client_secrets_obj,
-					    "client_secret");
-	itsa_config.client_secret = client_secret_obj ?
-		strdup(json_string_value(client_secret_obj)) : NULL;
 
 	no_color_obj = json_object_get(root, "no_color");
 	if ((no_color_obj && json_is_true(no_color_obj)) ||
