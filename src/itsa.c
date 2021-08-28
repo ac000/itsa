@@ -1984,22 +1984,22 @@ static int amend_savings_account(int argc, char *argv[])
 	printcc("Select account to edit (n) or quit (Q)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || *submit < '1' || *submit > '9')
-		goto out_free;
+		goto out_free_list;
 
 	said = ac_slist_nth_data(accounts, atoi(submit) - 1);
 	if (!said) {
 		printec("No such account index\n");
-		goto out_free;
+		goto out_free_list;
 	}
 	err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't retrieve account details. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		goto out_free_jbuf;
 	}
 	if (mtd_http_status_code(jbuf) == MTD_HTTP_NOT_FOUND) {
 		printec("No such Savings Account\n");
-		goto out_free;
+		goto out_free_jbuf;
 	}
 
 	result = get_result_json(jbuf);
@@ -2018,7 +2018,7 @@ static int amend_savings_account(int argc, char *argv[])
 	if (tmpfd == -1) {
 		printec("Couldn't open %s in %s\n", tpath, __func__);
 		perror("open");
-		goto out_free;
+		goto out_free_jbuf;
 	}
 
 	json_dumpfd(result, tmpfd, JSON_INDENT(4));
@@ -2053,9 +2053,11 @@ out_close_tmpfd:
 
 	json_decref(result);
 
-out_free:
-	ac_slist_destroy(&accounts, free);
+out_free_jbuf:
 	free(jbuf);
+
+out_free_list:
+	ac_slist_destroy(&accounts, free);
 
 	return ret;
 }
