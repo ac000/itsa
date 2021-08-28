@@ -81,9 +81,9 @@ void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 		return;
 
 	va_start(args, fmt);
+	tc_printv(fp, str, args);
 	va_end(args);
 
-	tc_printv(fp, str, args);
 	free(str);
 }
 
