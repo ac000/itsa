@@ -110,9 +110,13 @@ static const struct api_error ic_end_of_year_est_errors[] = {
 
 static struct {
 	const char *gnc;
-	const char *seid;
+	const char *bid;
+	const char *bname;
+	const char *btype;
 } itsa_config;
-#define SEID	itsa_config.seid
+#define BUSINESS_ID	itsa_config.bid
+#define BUSINESS_NAME	itsa_config.bname
+#define BUSINESS_TYPE	itsa_config.btype
 
 bool NO_COLOR;
 
@@ -145,7 +149,9 @@ static void disp_usage(void)
 static void free_config(void)
 {
 	free((void *)itsa_config.gnc);
-	free((void *)itsa_config.seid);
+	free((void *)itsa_config.bid);
+	free((void *)itsa_config.bname);
+	free((void *)itsa_config.btype);
 }
 
 /*
@@ -934,8 +940,8 @@ static int submit_eop_obligation(const char *start, const char *end)
 		return 0;
 
 	json = ac_jsonw_init();
-	ac_jsonw_add_str(json, "typeOfBusiness", "self-employment");
-	ac_jsonw_add_str(json, "businessId", SEID);
+	ac_jsonw_add_str(json, "typeOfBusiness", BUSINESS_TYPE);
+	ac_jsonw_add_str(json, "businessId", BUSINESS_ID);
 
 	ac_jsonw_add_object(json, "accountingPeriod");
 	ac_jsonw_add_str(json, "startDate", start);
@@ -973,7 +979,7 @@ static int get_eop_obligations(int argc, char *argv[])
 	json_t *result;
 	json_t *obs;
 	json_t *period;
-	char qs[128] = "?typeOfBusiness=self-employment";
+	char qs[192];
 	char *jbuf;
 	size_t index;
 	int ret = -1;
@@ -984,6 +990,8 @@ static int get_eop_obligations(int argc, char *argv[])
 		return -1;
 	}
 
+	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
+		 BUSINESS_TYPE, BUSINESS_ID);
 	if (argc > 2) {
 		int len = strlen(qs);
 
@@ -1049,8 +1057,8 @@ static int biss_se_summary(const char *tax_year)
 	int ret = -1;
 	int err;
 
-	snprintf(qs, sizeof(qs), "?selfEmploymentId=%s&taxYear=%s", SEID,
-		 tax_year);
+	snprintf(qs, sizeof(qs), "?selfEmploymentId=%s&taxYear=%s",
+		 BUSINESS_ID, tax_year);
 
 	err = mtd_biss_get_self_employment(qs, &jbuf);
 	if (err) {
@@ -1060,7 +1068,7 @@ static int biss_se_summary(const char *tax_year)
 	}
 
 	printsc("BISS Self-Employment Annual Summary for #BOLD#%s#RST# "
-		"#CHARC#/#RST# #BOLD#%s#RST#\n", SEID, tax_year);
+		"#CHARC#/#RST# #BOLD#%s#RST#\n", BUSINESS_ID, tax_year);
 
 	result = get_result_json(jbuf);
 
@@ -1224,7 +1232,7 @@ static int annual_summary(const char *tax_year)
 	int ret = -1;
 	int err;
 
-	err = mtd_sa_se_get_annual_summary(SEID, tax_year, &jbuf);
+	err = mtd_sa_se_get_annual_summary(BUSINESS_ID, tax_year, &jbuf);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't get Annual Summary. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1267,8 +1275,8 @@ again:
 		};
 
 		free(jbuf);
-		err = mtd_sa_se_update_annual_summary(&dsctx, SEID, tax_year,
-						      &jbuf);
+		err = mtd_sa_se_update_annual_summary(&dsctx, BUSINESS_ID,
+						      tax_year, &jbuf);
 		if (err) {
 			printec("Couldn't update Annual Summary. (%s)\n%s\n",
 				mtd_err2str(err), jbuf);
@@ -1408,12 +1416,13 @@ static int set_period(const char *start, const char *end, long income,
 	dsctx.src_type = MTD_DATA_SRC_BUF;
 
 	if (action == PERIOD_CREATE) {
-		err = mtd_sa_se_create_period(&dsctx, SEID, &jbuf);
+		err = mtd_sa_se_create_period(&dsctx, BUSINESS_ID, &jbuf);
 	} else {
 		char period_id[32];
 
 		snprintf(period_id, sizeof(period_id), "%s_%s", start, end);
-		err = mtd_sa_se_update_period(&dsctx, SEID, period_id, &jbuf);
+		err = mtd_sa_se_update_period(&dsctx, BUSINESS_ID, period_id,
+					      &jbuf);
 	}
 	if (err) {
 		printec("Failed to %s period. (%s)\n%s\n",
@@ -1634,10 +1643,12 @@ static void get_period(char **start, char **end)
 	json_t *obs;
 	json_t *period;
 	size_t index;
-	const char *qs = "?typeOfBusiness=self-employment";
+	char qs[128];
 	char *jbuf;
 	int err;
 
+	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
+		 BUSINESS_TYPE, BUSINESS_ID);
 	err = mtd_ob_list_inc_and_expend_obligations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
@@ -1701,7 +1712,7 @@ static int list_periods(int argc, char *argv[])
 	json_t *result;
 	json_t *obs;
 	json_t *period;
-	char qs[128] = "?typeOfBusiness=self-employment";
+	char qs[192];
 	int err;
 	size_t index;
 	char *jbuf;
@@ -1711,6 +1722,8 @@ static int list_periods(int argc, char *argv[])
 		return -1;
 	}
 
+	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
+		 BUSINESS_TYPE, BUSINESS_ID);
 	if (argc > 2) {
 		int len = strlen(qs);
 
@@ -2073,17 +2086,105 @@ static int init_auth(void)
 	return err;
 }
 
-static int do_init_all(const struct mtd_cfg *cfg)
+static int set_business(void)
 {
 	json_t *result = NULL;
-	json_t *employment;
-	json_t *seid;
+	json_t *lob;
+	json_t *bus;
 	json_t *config;
 	json_error_t error;
+	json_t *ba;
+	size_t idx;
 	char *jbuf;
 	char path[PATH_MAX];
+	char *s;
+	char submit[PATH_MAX];
+	int def_bus = 0;
+	int err;
+	int ret = 0;
+
+	printf("\nLooking up business(es)...\n");
+	err = mtd_bd_list(&jbuf);
+	if (err) {
+		printec("Couldn't get list of employments. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		goto out_free;
+	}
+
+	result = get_result_json(jbuf);
+	lob = json_object_get(result, "listOfBusinesses");
+	if (json_array_size(lob) == 0) {
+		printec("No business(es) found. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		goto out_free;
+	}
+
+	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
+	config = json_load_file(path, 0, &error);
+	if (!config) {
+		printec("Couldn't open %s: %s\n", path, error.text);
+		goto out_free;
+	}
+
+	ba = json_array();
+	printf("\n");
+	printc("#CHARC#  %-7s %7s %20s %15s#RST#\n", "idx", "type", "bid",
+	       "name");
+	printc("#CHARC#"
+	       " ------------------------------------------------------------"
+	       "------------------#RST#\n");
+	json_array_foreach(lob, idx, bus) {
+		json_t *new;
+		json_t *type_obj = json_object_get(bus, "typeOfBusiness");
+		json_t *bid_obj = json_object_get(bus, "businessId");
+		json_t *name_obj = json_object_get(bus, "tradingName");
+		const char *type = json_string_value(type_obj);
+		const char *bid = json_string_value(bid_obj);
+		const char *name = json_string_value(name_obj);
+
+		printf("  %2zu     %-20s %-19s %s\n", idx, type, bid, name);
+
+		new = json_pack("{ s:s, s:s, s:s? }", "type", type, "bid", bid,
+				"name", name);
+		json_array_append_new(ba, new);
+	}
+	json_object_set(config, "businesses", ba);
+
+	printf("\n");
+	if (json_array_size(lob) > 1) {
+again:
+		printcc("Select a business to use as default (n)> ");
+		s = fgets(submit, sizeof(submit), stdin);
+		def_bus = atoi(submit);
+		if (!s || *s < '0' || *s > '9' ||
+		    def_bus > (int)json_array_size(lob))
+			goto again;
+	}
+	json_object_set_new(config, "business_idx", json_integer(def_bus));
+
+	printf("\n");
+	printcc("Enter the data source path for the default business> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	ac_str_chomp(s);
+	bus = json_array_get(ba, def_bus);
+	json_object_set_new(bus, "gnc_sqlite", json_string(s));
+
+	json_dump_file(config, path, JSON_INDENT(4));
+	json_dumpf(config, stdout, JSON_INDENT(4));
+	json_decref(ba);
+	json_decref(config);
+
+out_free:
+	free(jbuf);
+	json_decref(result);
+
+	return ret;
+}
+
+static int do_init_all(const struct mtd_cfg *cfg)
+{
+	char path[PATH_MAX];
 	int dfd;
-	int ret = -1;
 	int err;
 
 	/* Quick check to see if we alresdy have a libmtdac config... */
@@ -2122,47 +2223,13 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	if (err)
 		return err;
 
-	printic("Looking up SEID...\n");
-	err = mtd_bd_list(&jbuf);
-	if (err) {
-		printec("Couldn't get list of employments. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		goto out_free;
-	}
-
-	result = get_result_json(jbuf);
-	employment = json_object_get(result, "listOfBusinesses");
-	employment = json_array_get(employment, 0);
-	seid = json_object_get(employment, "businessId");
-	if (!seid) {
-		printec("No employments found\n%s\n", jbuf);
-		goto out_free;
-	}
-
-	printsc("Found SEID : #BOLD#%s#RST#\n", json_string_value(seid));
-
-	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
-	config = json_load_file(path, 0, &error);
-	if (!config) {
-		printec("Couldn't open itsa/config.json: %s\n", error.text);
-		goto out_free;
-	}
-
-	json_object_set(config, "self_employment_id", seid);
-	json_dump_file(config, path, JSON_INDENT(4));
-	json_decref(config);
+	set_business();
 
 	printf("\n");
 	printsc("Initialisation complete. Re-run command if something looks "
 		"wrong.\n");
 
-	ret = 0;
-
-out_free:
-	free(jbuf);
-	json_decref(result);
-
-	return ret;
+	return 0;
 }
 
 static void print_api_info(void)
@@ -2170,17 +2237,28 @@ static void print_api_info(void)
 	printic("***\n");
 	printic("*** Using %s API\n",
 		is_prod_api ? "#RED#PRODUCTION#RST#" : "#TANG#TEST#RST#");
-	printic("***\n\n");
+	printic("***\n");
+	if (!BUSINESS_ID)
+		goto out;
+	printic("*** Using business : #BOLD#%s#RST# [#BOLD#%s#RST#]\n",
+		BUSINESS_NAME, BUSINESS_ID);
+	printic("***\n");
+
+out:
+	printf("\n");
 }
 
 static int read_config(void)
 {
 	json_t *root;
 	json_t *prod_api;
-	json_t *gnc_obj;
+	json_t *bidx_obj;
+	json_t *jobj;
+	json_t *bus_obj;
+	json_t *lob;
 	json_t *no_color_obj;
-	json_t *seid_obj;
 	char path[PATH_MAX];
+	int ret = -1;
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
 
@@ -2193,21 +2271,37 @@ static int read_config(void)
 	prod_api = json_object_get(root, "production_api");
 	is_prod_api = json_is_true(prod_api);
 
-	gnc_obj = json_object_get(root, "gnc_sqlite");
-	itsa_config.gnc = strdup(json_string_value(gnc_obj));
-
-	seid_obj = json_object_get(root, "self_employment_id");
-	itsa_config.seid = seid_obj ? strdup(json_string_value(seid_obj)) :
-				      NULL;
+	bidx_obj = json_object_get(root, "business_idx");
+	if (!bidx_obj) {
+		printec("No 'business_idx' found.\n");
+		goto out_free;
+	}
+	lob = json_object_get(root, "businesses");
+	if (!lob) {
+		printec("No 'businesses' found.\n");
+		goto out_free;
+	}
+	bus_obj = json_array_get(lob, json_integer_value(bidx_obj));
+	jobj = json_object_get(bus_obj, "bid");
+	itsa_config.bid = strdup(json_string_value(jobj));
+	jobj = json_object_get(bus_obj, "type");
+	itsa_config.btype = strdup(json_string_value(jobj));
+	jobj = json_object_get(bus_obj, "name");
+	itsa_config.bname = jobj ? strdup(json_string_value(jobj)) : NULL;
+	jobj = json_object_get(bus_obj, "gnc_sqlite");
+	itsa_config.gnc = strdup(json_string_value(jobj));
 
 	no_color_obj = json_object_get(root, "no_color");
 	if ((no_color_obj && json_is_true(no_color_obj)) ||
 	    (!no_color_obj && getenv("NO_COLOR")))
 		NO_COLOR = true;
 
+	ret = 0;
+
+out_free:
 	json_decref(root);
 
-	return 0;
+	return ret;
 }
 
 static char *set_prod_name(void *user_data __unused)
