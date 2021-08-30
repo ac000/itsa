@@ -125,9 +125,6 @@ $ mkdir -p ~/.config/itsa
 $ cp config.json.tmpl ~/.config/itsa/config.json
 ```
 
-Edit *~/.config/itsa/config.json* and put in the path to your GNUCash SQLite
-file.
-
 Set *production_api* accordingly.
 
 Next you will need to run
