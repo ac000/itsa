@@ -28,11 +28,18 @@
 #define _TEXTUS_COLORIS_H_
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum tc_coloris_mode {
+	TC_COLORIS_MODE_OFF = 0,
+	TC_COLORIS_MODE_ON,
+	TC_COLORIS_MODE_AUTO,
+};
 
 struct tc_coloris {
 	const char *color;
@@ -49,7 +56,8 @@ extern int tc_printv(FILE *fp, const char *fmt, va_list args)
 	__attribute__((format(printf, 2, 0)));
 extern int tc_print(FILE *fp, const char *fmt, ...)
 	__attribute__((format(printf, 2, 3)));
-extern void tc_set_colors(const struct tc_coloris *colors);
+extern void tc_set_colors(const struct tc_coloris *colors,
+			  enum tc_coloris_mode mode);
 
 #pragma GCC visibility pop
 
