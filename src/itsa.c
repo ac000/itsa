@@ -118,8 +118,6 @@ static struct {
 #define BUSINESS_NAME	itsa_config.bname
 #define BUSINESS_TYPE	itsa_config.btype
 
-bool NO_COLOR;
-
 static char const *extra_hdrs[5];
 
 static bool is_prod_api;
@@ -2256,7 +2254,6 @@ static int read_config(void)
 	json_t *jobj;
 	json_t *bus_obj;
 	json_t *lob;
-	json_t *no_color_obj;
 	char path[PATH_MAX];
 	int ret = -1;
 
@@ -2290,11 +2287,6 @@ static int read_config(void)
 	itsa_config.bname = jobj ? strdup(json_string_value(jobj)) : NULL;
 	jobj = json_object_get(bus_obj, "gnc_sqlite");
 	itsa_config.gnc = strdup(json_string_value(jobj));
-
-	no_color_obj = json_object_get(root, "no_color");
-	if ((no_color_obj && json_is_true(no_color_obj)) ||
-	    (!no_color_obj && getenv("NO_COLOR")))
-		NO_COLOR = true;
 
 	ret = 0;
 

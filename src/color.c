@@ -89,5 +89,20 @@ void printc_xtra(FILE *fp, enum msg_type type, const char *fmt, ...)
 
 void set_colors(void)
 {
-	tc_set_colors(colors);
+	const char *color = getenv("ITSA_COLOR");
+	enum tc_coloris_mode mode = TC_COLORIS_MODE_AUTO;
+
+	if (!color)
+		goto out_set;
+
+	if (*color == 't' || *color == 'T' ||
+	    *color == 'y' ||  *color == 'Y') {
+		mode = TC_COLORIS_MODE_ON;
+	} else if (*color == 'f' || *color == 'F' ||
+	    *color == 'n' ||  *color == 'N') {
+		mode = TC_COLORIS_MODE_OFF;
+	}
+
+out_set:
+	tc_set_colors(colors, mode);
 }
