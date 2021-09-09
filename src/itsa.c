@@ -130,6 +130,9 @@ static void disp_usage(void)
 	printf("Commands\n");
 	printf("    init\n");
 	printf("    re-auth\n");
+	printf("\n");
+	printf("    switch-business\n");
+	printf("\n");
 	printf("    list-periods [<start> <end>]\n");
 	printf("    create-period\n");
 	printf("    update-period <period_id>\n");
@@ -2073,6 +2076,71 @@ out_free_list:
 	return ret;
 }
 
+static int switch_business(void)
+{
+	json_t *lob;
+	json_t *bus;
+	json_t *config;
+	json_t *bidx;
+	json_error_t error;
+	size_t idx;
+	size_t didx;
+	char path[PATH_MAX];
+	char *s;
+	char submit[6];
+	int def_bus = 0;
+
+	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
+	config = json_load_file(path, 0, &error);
+	if (!config) {
+		printec("Couldn't open %s: %s\n", path, error.text);
+		return -1;
+	}
+
+	bidx = json_object_get(config, "business_idx");
+	didx = json_integer_value(bidx);
+
+	lob = json_object_get(config, "businesses");
+	printf("\n");
+	printc("#CHARC#  cur   %-7s %7s %20s %15s#RST#\n",
+	       "idx", "type", "bid", "name");
+	printc("#CHARC#"
+	       " ------------------------------------------------------------"
+	       "------------------#RST#\n");
+	json_array_foreach(lob, idx, bus) {
+		json_t *type_obj = json_object_get(bus, "type");
+		json_t *bid_obj = json_object_get(bus, "bid");
+		json_t *name_obj = json_object_get(bus, "name");
+		const char *type = json_string_value(type_obj);
+		const char *bid = json_string_value(bid_obj);
+		const char *name = json_string_value(name_obj);
+
+		printc("  #BOLD#%2s#RST#    %2zu     %-20s %-19s %s\n",
+		       idx == didx ? "*" : "", idx, type, bid, name);
+	}
+	printf("\n");
+
+again:
+	printcc("Select a business to use as default (n)> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	def_bus = atoi(submit);
+	if (!s || *s < '0' || *s > '9' ||
+	    def_bus > (int)json_array_size(lob))
+		goto again;
+
+	bus = json_array_get(lob, def_bus);
+	printf("\n");
+	printsc("Using #BOLD#%s#RST# / #BOLD#%s#RST# as default business\n",
+		json_string_value(json_object_get(bus, "name")),
+		json_string_value(json_object_get(bus, "bid")));
+
+	json_object_set_new(config, "business_idx", json_integer(def_bus));
+	json_dump_file(config, path, JSON_INDENT(4));
+	json_decref(config);
+
+	return 0;
+}
+
 static int set_business(void)
 {
 	json_t *result = NULL;
@@ -2356,6 +2424,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return do_init_all(cfg);
 	if (IS_CMD("re-auth"))
 		return init_auth();
+	if (IS_CMD("switch_business"))
+		return switch_business();
 	if (IS_CMD("list-periods"))
 		return list_periods(argc, argv);
 	if (IS_CMD("create-period"))

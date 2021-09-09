@@ -104,6 +104,9 @@ Usage: itsa COMMAND [OPTIONS]
 Commands
     init
     re-auth
+
+    switch-business
+
     list-periods [<start> <end>]
     create-period
     update-period <period_id>
