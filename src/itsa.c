@@ -2073,17 +2073,6 @@ out_free_list:
 	return ret;
 }
 
-static int init_auth(void)
-{
-	int err;
-
-	err = mtd_init_auth(MTD_EP_API_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
-	if (err)
-		printec("%s\n", mtd_err2str(err));
-
-	return err;
-}
-
 static int set_business(void)
 {
 	json_t *result = NULL;
@@ -2177,6 +2166,17 @@ out_free:
 	json_decref(result);
 
 	return ret;
+}
+
+static int init_auth(void)
+{
+	int err;
+
+	err = mtd_init_auth(MTD_EP_API_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
+	if (err)
+		printec("%s\n", mtd_err2str(err));
+
+	return err;
 }
 
 static int do_init_all(const struct mtd_cfg *cfg)
