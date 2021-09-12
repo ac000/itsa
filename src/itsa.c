@@ -1106,7 +1106,7 @@ out_free:
 	return ret;
 }
 
-static const struct class4_nic_ecode_map {
+static const struct {
 	const char *exempt_code;
 	const char *desc;
 } class4_nic_ecode_map[] = {
