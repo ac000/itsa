@@ -177,7 +177,7 @@ This can be overridden by [ITSA\_COLOR](#itaa_color)
 By default, itsa will use colourised output. If the above *NO\_COLOR*
 environment variable is set then it won't.
 
-*ITSA\_COLOR* can be be used either force the colourised output on or off
+*ITSA\_COLOR* can be used to either force the colourised output on or off
 (regardless of the setting of *NO\_COLOR*).
 
 It can be set to either *yes/true* or *no/false*
