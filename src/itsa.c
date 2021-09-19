@@ -1012,6 +1012,8 @@ static int get_eop_obligations(int argc, char *argv[])
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
+	obs = json_array_get(obs, 0);
+	obs = json_object_get(obs, "obligationDetails");
 
 	printc("#CHARC#  %12s %11s %13s %15s %7s#RST#\n",
 	       "start", "end", "due", "status", "@" );
@@ -1019,20 +1021,21 @@ static int get_eop_obligations(int argc, char *argv[])
 	       " ------------------------------------------------------------"
 	       "---------#RST#\n");
 	json_array_foreach(obs, index, period) {
-		json_t *start_obj = json_object_get(period, "start");
-		json_t *end_obj = json_object_get(period, "end");
-		json_t *due_obj = json_object_get(period, "due");
-		json_t *processed = json_object_get(period, "processed");
+		json_t *start_obj = json_object_get(period, "periodStartDate");
+		json_t *end_obj = json_object_get(period, "periodEndDate");
+		json_t *due_obj = json_object_get(period, "dueDate");
+		json_t *recvd_obj = json_object_get(period, "receivedDate");
+		json_t *status_obj = json_object_get(period, "status");
 		const char *start = json_string_value(start_obj);
 		const char *end = json_string_value(end_obj);
 		const char *due = json_string_value(due_obj);
-		bool met = processed ? true : false;
+		const char *recvd = json_string_value(recvd_obj);
+		const char *status = json_string_value(status_obj);
+		bool met = *status == 'F' ? true : false;
 
-		printc("%s  %15s %12s %13s %9s%s#HI_GREEN#%15s#RST#\n",
+		printc("%s  %15s %12s %13s %9c%s#HI_GREEN#%15s#RST#\n",
 		       get_period_color(start, end, due, met),
-		       start, end, due, processed ? "F" : "O",
-		       "#RST#",
-		       processed ? json_string_value(processed) : "");
+		       start, end, due, *status, "#RST#", met ? recvd : "");
         }
 
 	json_decref(result);
