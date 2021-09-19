@@ -1010,7 +1010,7 @@ static int get_eop_obligations(int argc, char *argv[])
 
 	printsc("End of Period Statement Obligations\n");
 
-        result = get_result_json(jbuf);
+	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
 
 	printc("#CHARC#  %12s %11s %13s %15s %7s#RST#\n",
