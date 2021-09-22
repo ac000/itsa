@@ -2228,7 +2228,8 @@ again:
 	json_object_set_new(bus, "gnc_sqlite", json_string(s));
 
 	json_dump_file(config, path, JSON_INDENT(4));
-	json_dumpf(config, stdout, JSON_INDENT(4));
+	printf("\n");
+	printic("Set data source path to : #BOLD#%s#RST#\n", s);
 	json_decref(ba);
 	json_decref(config);
 
