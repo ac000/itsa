@@ -2264,7 +2264,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	if (dfd != -1) {
 		struct stat sb;
 
-		err = fstatat(dfd, "config.json", &sb, 0);
+		err = fstatat(dfd, "creds.json", &sb, 0);
 		if (!err) {
 			char *s;
 			char submit[3];
@@ -2279,7 +2279,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	}
 
 	printf("Initialising...\n\n");
-	err = mtd_init_config();
+	err = mtd_init_creds(MTD_EP_API_ITSA);
 	if (err)
 		return err;
 
