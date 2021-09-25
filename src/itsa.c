@@ -2159,28 +2159,28 @@ static int set_business(void)
 	char submit[PATH_MAX];
 	int def_bus = 0;
 	int err;
-	int ret = 0;
+	int ret = -1;
 
 	printf("\nLooking up business(es)...\n");
 	err = mtd_bd_list(&jbuf);
 	if (err) {
-		printec("Couldn't get list of employments. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
+		printec("set_business: Couldn't get list of employments. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
 		goto out_free;
 	}
 
 	result = get_result_json(jbuf);
 	lob = json_object_get(result, "listOfBusinesses");
 	if (json_array_size(lob) == 0) {
-		printec("No business(es) found. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
+		printec("set_business: No business(es) found.\n");
 		goto out_free;
 	}
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
 	config = json_load_file(path, 0, &error);
 	if (!config) {
-		printec("Couldn't open %s: %s\n", path, error.text);
+		printec("set_business: Couldn't open %s: %s\n",
+			path, error.text);
 		goto out_free;
 	}
 
@@ -2232,6 +2232,8 @@ again:
 	printic("Set data source path to : #BOLD#%s#RST#\n", s);
 	json_decref(ba);
 	json_decref(config);
+
+	ret = 0;
 
 out_free:
 	free(jbuf);
@@ -2293,7 +2295,9 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	if (err)
 		return err;
 
-	set_business();
+	err = set_business();
+	if (err)
+		return err;
 
 	printf("\n");
 	printsc("Initialisation complete. Re-run command if something looks "
