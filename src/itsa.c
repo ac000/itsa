@@ -2248,7 +2248,7 @@ static int init_auth(void)
 
 	err = mtd_init_auth(MTD_EP_API_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
 	if (err)
-		printec("%s\n", mtd_err2str(err));
+		printec("mtd_init_auth: %s\n", mtd_err2str(err));
 
 	return err;
 }
@@ -2282,13 +2282,17 @@ static int do_init_all(const struct mtd_cfg *cfg)
 
 	printf("Initialising...\n\n");
 	err = mtd_init_creds(MTD_EP_API_ITSA);
-	if (err)
+	if (err) {
+		printec("mtd_init_creds: %s\n", mtd_err2str(err));
 		return err;
+	}
 
 	printf("\n");
 	err = mtd_init_nino();
-	if (err)
+	if (err) {
+		printec("mtd_init_nino: %s\n", mtd_err2str(err));
 		return err;
+	}
 
 	printf("\n");
 	err = init_auth();
@@ -2337,7 +2341,7 @@ static int read_config(void)
 
 	root = json_load_file(path, 0, NULL);
 	if (!root) {
-		printec("Unable to open config : %s\n", path);
+		printec("read_config: Unable to open config : %s\n", path);
 		return -1;
 	}
 
@@ -2346,12 +2350,12 @@ static int read_config(void)
 
 	bidx_obj = json_object_get(root, "business_idx");
 	if (!bidx_obj) {
-		printec("No 'business_idx' found.\n");
+		printec("read_config: No 'business_idx' found.\n");
 		goto out_free;
 	}
 	lob = json_object_get(root, "businesses");
 	if (!lob) {
-		printec("No 'businesses' found.\n");
+		printec("read_config: No 'businesses' found.\n");
 		goto out_free;
 	}
 	bus_obj = json_array_get(lob, json_integer_value(bidx_obj));
@@ -2389,7 +2393,7 @@ static char *set_ver_cli(void *user_data __unused)
 
 	len = asprintf(&buf, "%s=%s", encname, encver);
 	if (len == -1) {
-		perror("asprintf");
+		perror("set_ver_cli/asprintf");
 		buf = NULL;
 	}
 
@@ -2409,7 +2413,7 @@ static const char *get_conf_dir(char *path)
 	snprintf(path, PATH_MAX, "%s/.config/itsa", home_dir);
 	dfd = open(home_dir, O_PATH|O_DIRECTORY);
 	if (dfd == -1) {
-		printec("open: Can't open %s\n", home_dir);
+		printec("get_conf_dir/open: Can't open %s\n", home_dir);
 		exit(EXIT_FAILURE);
 	}
 
@@ -2504,7 +2508,7 @@ int main(int argc, char *argv[])
 	flags |= MTD_OPT_ACT_OTHER_DIRECT;
 	err = mtd_init(flags, &cfg);
 	if (err) {
-		printec("%s\n", mtd_err2str(err));
+		printec("mtd_init: %s\n", mtd_err2str(err));
 		exit(EXIT_FAILURE);
 	}
 
