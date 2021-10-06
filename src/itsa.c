@@ -463,9 +463,10 @@ static void print_bread_crumb(const char *bread_crumb[])
 		return;
 	}
 
-	for ( ; *bread_crumb != NULL; bread_crumb++)
-		len += snprintf(str + len, sizeof(str) - len, "%s / ",
-				*bread_crumb);
+	for ( ; *bread_crumb != NULL; bread_crumb++) {
+		snprintf(str + len, sizeof(str) - len, "%s / ", *bread_crumb);
+		len = strlen(str);
+	}
 	str[len - 3] = '\0';
 	printc("#BOLD# %s#RST#\n", str);
 }
