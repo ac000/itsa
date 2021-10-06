@@ -7,12 +7,12 @@ $(shell mkdir -p $(DEPDIR) >/dev/null)
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
 CC	= gcc
-CFLAGS	= -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 -g -O2 \
+CFLAGS += -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 -g -O2 \
 	  -Wp,-D_FORTIFY_SOURCE=2 --param=ssp-buffer-size=4 -fstack-protector \
 	  -fPIE -fexceptions -I../../libmtdac/include \
 	  -DGIT_VERSION=${GIT_VERSION} -pipe
-LDFLAGS = -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
-LIBS	= -lmtdac -lac -lsqlite3 -ljansson
+LDFLAGS += -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
+LIBS	 = -lmtdac -lac -lsqlite3 -ljansson
 POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 GCC_MAJOR	:= $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 1)
