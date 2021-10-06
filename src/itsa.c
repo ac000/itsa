@@ -305,6 +305,8 @@ static void get_data(const char *start, const char *end, long *income,
 		     long *expenses)
 {
 	sqlite3_stmt *trans_stmt;
+	sqlite3_stmt *splits_stmt;
+	sqlite3_stmt *acc_stmt;
 	sqlite3 *db;
 	char sql[512];
 	ac_slist_t *i_list = NULL;
@@ -316,12 +318,21 @@ static void get_data(const char *start, const char *end, long *income,
 	sqlite3_open(itsa_config.gnc, &db);
 	snprintf(sql, sizeof(sql),
 		 "SELECT * FROM transactions WHERE "
-		 "post_date >= '%s' AND post_date <= '%s'", start, end);
+		 "post_date >= ? AND post_date <= ?");
 	sqlite3_prepare_v2(db, sql, -1, &trans_stmt, NULL);
+	sqlite3_bind_text(trans_stmt, 1, start, strlen(start), SQLITE_STATIC);
+	sqlite3_bind_text(trans_stmt, 2, end, strlen(end), SQLITE_STATIC);
+
+	snprintf(sql, sizeof(sql),
+		 "SELECT value_num, account_guid FROM splits WHERE "
+		 "tx_guid = ? AND value_num > 0 LIMIT 1");
+	sqlite3_prepare_v2(db, sql, -1, &splits_stmt, NULL);
+
+	snprintf(sql, sizeof(sql),
+		 "SELECT account_type FROM accounts WHERE guid = ?");
+	sqlite3_prepare_v2(db, sql, -1, &acc_stmt, NULL);
 
 	while (sqlite3_step(trans_stmt) == SQLITE_ROW) {
-		sqlite3_stmt *splits_stmt;
-		sqlite3_stmt *acc_stmt;
 		char *item;
 		const char *account;
 		const unsigned char *date = sqlite3_column_text(trans_stmt, 3);
@@ -332,18 +343,16 @@ static void get_data(const char *start, const char *end, long *income,
 		long amnt;
 		int len;
 
-		snprintf(sql, sizeof(sql),
-			 "SELECT value_num, account_guid FROM splits WHERE "
-			 "tx_guid = '%s' AND value_num > 0 LIMIT 1", tx_guid);
-		sqlite3_prepare_v2(db, sql, -1, &splits_stmt, NULL);
+		sqlite3_bind_text(splits_stmt, 1, (const char *)tx_guid,
+				  sqlite3_column_bytes(trans_stmt, 0),
+				  SQLITE_STATIC);
 		sqlite3_step(splits_stmt);
 
 		amnt = sqlite3_column_int(splits_stmt, 0);
 		account_guid = sqlite3_column_text(splits_stmt, 1);
-		snprintf(sql, sizeof(sql),
-			 "SELECT account_type FROM accounts WHERE guid = '%s'",
-			 account_guid);
-		sqlite3_prepare_v2(db, sql, -1, &acc_stmt, NULL);
+		sqlite3_bind_text(acc_stmt, 1, (const char *)account_guid,
+				  sqlite3_column_bytes(splits_stmt, 1),
+				  SQLITE_STATIC);
 		sqlite3_step(acc_stmt);
 
 		len = asprintf(&item, "%.10s %-54s %7.2f", date, desc,
@@ -364,9 +373,12 @@ static void get_data(const char *start, const char *end, long *income,
 			exit(EXIT_FAILURE);
 		}
 
-		sqlite3_finalize(splits_stmt);
-		sqlite3_finalize(acc_stmt);
+		sqlite3_reset(acc_stmt);
+		sqlite3_reset(splits_stmt);
 	}
+
+	sqlite3_finalize(acc_stmt);
+	sqlite3_finalize(splits_stmt);
 	sqlite3_finalize(trans_stmt);
 	sqlite3_close(db);
 
