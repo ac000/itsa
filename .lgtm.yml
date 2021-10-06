@@ -1,0 +1,22 @@
+extraction:
+    cpp:
+        prepare:
+            packages:
+                - libcurl4-openssl-dev
+                - libjansson-dev
+        after_prepare:
+            - cd $LGTM_WORKSPACE
+            - git clone https://github.com/ac000/libmtdac.git
+            - cd libmtdac/src
+            - make
+
+            - cd $LGTM_WORKSPACE
+            - git clone https://github.com/ac000/libac.git
+            - cd libac/src
+            - make
+
+            - export LD_LIBRARY_PATH="${LGTM_WORKSPACE}/libmtdac/src:${LGTM_WORKSPACE}/libac/src"
+            - cd $LGTM_SRC
+        index:
+            build_command:
+                - CFLAGS="-I${LGTM_WORKSPACE}/libmtdac/include -I${LGTM_WORKSPACE}/libac/src/include" LDFLAGS="-L${LGTM_WORKSPACE}/libmtdac/src -L${LGTM_WORKSPACE}/libac/src" make -C src/
