@@ -134,7 +134,7 @@ static void disp_usage(void)
 	printf("    switch-business\n");
 	printf("\n");
 	printf("    list-periods [<start> <end>]\n");
-	printf("    create-period\n");
+	printf("    create-period [<start> <end>]\n");
 	printf("    update-period <period_id>\n");
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
@@ -1707,16 +1707,24 @@ out_free_jbuf:
 	return ret;
 }
 
-static int create_period(void)
+static int create_period(int argc, char *argv[])
 {
 	char *start;
 	char *end;
 	int ret = 0;
 	int err;
 
-	err = get_period(&start, &end);
-	if (err)
+	if (argc > 2 && argc < 4) {
+		disp_usage();
 		return -1;
+	} else if (argc == 4) {
+		start = strdup(argv[2]);
+		end = strdup(argv[3]);
+	} else {
+		err = get_period(&start, &end);
+		if (err)
+			return -1;
+	}
 
 	err = __period_update(start, end, PERIOD_CREATE);
 	if (err)
@@ -2458,7 +2466,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 	if (IS_CMD("list-periods"))
 		return list_periods(argc, argv);
 	if (IS_CMD("create-period"))
-		return create_period();
+		return create_period(argc, argv);
 	if (IS_CMD("update-period"))
 		return update_period(argc, argv);
 	if (IS_CMD("update-annual-summary"))

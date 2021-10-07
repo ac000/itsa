@@ -108,7 +108,7 @@ Commands
     switch-business
 
     list-periods [<start> <end>]
-    create-period
+    create-period [<start> <end>]
     update-period <period_id>
     update-annual-summary <tax_year>
     get-end-of-period-statement-obligations [<start> <end>]
