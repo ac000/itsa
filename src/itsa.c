@@ -1654,7 +1654,7 @@ static int update_period(int argc, char *argv[])
 	return 0;
 }
 
-static void get_period(char **start, char **end)
+static int get_period(char **start, char **end)
 {
 	json_t *result;
 	json_t *obs;
@@ -1663,6 +1663,7 @@ static void get_period(char **start, char **end)
 	char qs[128];
 	char *jbuf;
 	int err;
+	int ret = -1;
 
 	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
 		 BUSINESS_TYPE, BUSINESS_ID);
@@ -1693,6 +1694,7 @@ static void get_period(char **start, char **end)
 		*start = strdup(json_string_value(start_obj));
 		*end = strdup(json_string_value(end_obj));
 
+		ret = 0;
 		break;
         }
 
@@ -1701,17 +1703,19 @@ out_free_json:
 
 out_free_jbuf:
 	free(jbuf);
+
+	return ret;
 }
 
 static int create_period(void)
 {
-	char *start = NULL;
-	char *end = NULL;
+	char *start;
+	char *end;
 	int ret = 0;
 	int err;
 
-	get_period(&start, &end);
-	if (!start || !end)
+	err = get_period(&start, &end);
+	if (err)
 		return -1;
 
 	err = __period_update(start, end, PERIOD_CREATE);
