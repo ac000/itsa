@@ -170,7 +170,7 @@ If neither of those are set, itsa will default to **vi**.
 By default itsa will use colourised output. This can be disabled by setting
 the **NO_COLOR** environment variable. Its value is unimportant (can be empty).
 
-This can be overridden by [ITSA\_COLOR](#itaa_color)
+This can be overridden by [ITSA\_COLOR](#itsa_color)
 
 ### ITSA_COLOR
 
