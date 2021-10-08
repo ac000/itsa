@@ -1,5 +1,7 @@
 # itsa - Income Tax Self-Assessment
 
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ac000/itsa.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ac000/itsa/context:cpp)
+
 itsa is a program for interacting with the UK's HMRC [Make Tax Digital](https://developer.service.hmrc.gov.uk/api-documentation) APIs.
 
 It makes use of [libmtdac](https://github.com/ac000/libmtdac)
