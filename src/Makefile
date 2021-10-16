@@ -15,15 +15,18 @@ LDFLAGS += -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
 LIBS	 = -lmtdac -lac -lsqlite3 -ljansson
 POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
-GCC_MAJOR	:= $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 1)
-GCC_MINOR	:= $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 2)
-GCC_SUB		:= $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 3)
-GCC_VER_OK	:= $(shell test $(GCC_MAJOR) -ge 5 -a $(GCC_MINOR) -ge 1 \
-				-a $(GCC_SUB) -ge 1 && echo 1)
+COMPILER := $(shell $(CC) --version 2> /dev/null | grep -oE 'GCC|clang')
 
-ifneq "$(GCC_VER_OK)" "1"
-        # For GCC < 5.1.1
-        CFLAGS += -Wno-missing-field-initializers
+ifeq "$(COMPILER)" "GCC"
+        GCC_MAJOR  := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 1)
+        GCC_MINOR  := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 2)
+        GCC_SUB	   := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 3)
+        GCC_VER_OK := $(shell test $(GCC_MAJOR) -ge 5 -a $(GCC_MINOR) -ge 1 \
+			-a $(GCC_SUB) -ge 1 && echo 1)
+        ifneq "$(GCC_VER_OK)" "1"
+               # For GCC < 5.1.1
+               CFLAGS += -Wno-missing-field-initializers
+        endif
 endif
 
 sources	= $(wildcard *.c)
