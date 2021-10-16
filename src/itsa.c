@@ -36,6 +36,7 @@
 
 #include <libac.h>
 
+#include "platform.h"
 #include "color.h"
 
 #define PROD_NAME		"itsa"
