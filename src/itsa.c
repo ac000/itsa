@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <spawn.h>
 #include <regex.h>
-#include <linux/limits.h>
+#include <limits.h>
 
 #include <sqlite3.h>
 
