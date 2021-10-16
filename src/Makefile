@@ -12,7 +12,7 @@ CFLAGS += -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 -g -O2 \
 	  -fPIE -fexceptions -I../../libmtdac/include \
 	  -DGIT_VERSION=${GIT_VERSION} -pipe
 LDFLAGS += -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
-LIBS	 = -lmtdac -lac -lsqlite3 -ljansson
+LIBS	+= -lmtdac -lac -lsqlite3 -ljansson
 POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 COMPILER := $(shell $(CC) --version 2> /dev/null | grep -oE 'GCC|clang')
