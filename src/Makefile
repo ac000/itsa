@@ -29,6 +29,12 @@ ifeq "$(COMPILER)" "GCC"
         endif
 endif
 
+UNAME_S := $(shell uname -s | tr A-Z a-z)
+ifeq ($(UNAME_S),freebsd)
+        CFLAGS	+= -I/usr/local/include
+        LIBS	:= -L/usr/local/lib $(LIBS)
+endif
+
 sources	= $(wildcard *.c)
 objects	= $(sources:.c=.o)
 
