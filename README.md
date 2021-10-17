@@ -28,6 +28,11 @@ file.
 
 # Building & Installing
 
+itsa is primarily developed under Linux but it also builds and runs under
+FreeBSD.
+
+### Linux
+
 itsa has a few dependencies
 
   - [libmtdac](https://github.com/ac000/libmtdac)
@@ -95,6 +100,53 @@ $ cd itsa
 $ make rpm
 $ sudo dnf install ~/rpmbuild/RPMS/x86_64/itsa-*
 ```
+
+### FreeBSD
+
+Quick start.
+
+Install dependencies
+
+    $ sudo pkg install gmake jansson curl e2fsprogs-libuuid
+
+Build libmtdac
+
+```
+$ git clone https://github.com/ac000/libmtdac.git
+$ cd libmtdac
+$ gmake
+```
+
+```
+cd ..
+```
+
+```
+$ git clone https://github.com/ac000/libac.git
+$ cd libac
+$ gmake
+```
+
+```
+cd ..
+```
+
+and finally itsa itself
+
+```
+$ git clone https://github.com/ac000/itsa.git
+$ cd itsa
+$ CFLAGS=-I../../libac/src/include LIBS=-L../../libac/src gmake
+```
+
+The above _gmake_ commands will use GCC by default, to use clang, add CC=clang
+to the gmake command, e.g
+
+    $ gmake CC=clang
+
+Then you can run it like
+
+    $ LD_LIBRARY_PATH=../../libmtdac/src:../../libac/src ./itsa
 
 # Using
 
