@@ -1239,6 +1239,7 @@ static const char *get_editor(void)
 	return editor;
 }
 
+extern char **environ;
 static int annual_summary(const char *tax_year)
 {
 	json_t *result;
