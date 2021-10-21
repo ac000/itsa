@@ -7,8 +7,6 @@ itsa is a program for interacting with the UK's HMRC [Make Tax Digital](https://
 
 It makes use of [libmtdac](https://github.com/ac000/libmtdac)
 
-This is developed under Linux and hasn't been tested on anything else.
-
 # Status
 
 [2021-03-05] Started the process of obtaining production credentials.
