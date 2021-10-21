@@ -40,19 +40,20 @@ itsa has a few dependencies
   - [libac](https://github.com/ac000/libac)
   - [libcurl](https://curl.se/libcurl/) (via libmtdac)
   - [jansson](https://digip.org/jansson/)
+  - [sqlite](https://www.sqlite.org/index.html)
 
 the last two should already be packaged up for your system.
 
 On Red Hat/Fedora/etc libcurl and jansson can be obtained with
 
 ```
-$ sudo dnf install libcurl{,-devel} jansson{,-devel}
+$ sudo dnf install libcurl{,-devel} jansson{,-devel} sqlite{,-devel}
 ```
 
 On Debian (something like...)
 
 ```
-$ sudo apt-get install libcurl4{,-openssl-dev} libjansson{4,-dev}
+$ sudo apt-get install libcurl4{,-openssl-dev} libjansson{4,-dev} libsqlite3-{0,dev}
 ```
 
 Once they are installed you can build the other two libraries.
@@ -108,7 +109,7 @@ Quick start.
 
 Install dependencies
 
-    $ sudo pkg install gmake jansson curl e2fsprogs-libuuid
+    $ sudo pkg install gmake jansson curl sqlite3 e2fsprogs-libuuid
 
 Build libmtdac
 
