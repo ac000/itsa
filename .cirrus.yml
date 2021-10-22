@@ -1,0 +1,28 @@
+freebsd_instance:
+  image_family: freebsd-13-0
+  cpu: 1
+  memory: 1G
+
+task:
+  name: freebsd_13 (clang)
+  skip: "!changesInclude('.cirrus.yml', 'Makefile', 'src/**')"
+  install_script: pkg install -y git gmake jansson curl e2fsprogs-libuuid
+  clone_script: |
+    if [ -z "$CIRRUS_PR" ]; then
+      git clone https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
+      git reset --hard $CIRRUS_CHANGE_IN_REPO
+    else
+      git clone https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
+      git fetch origin pull/$CIRRUS_PR/head:pull/$CIRRUS_PR
+      git reset --hard $CIRRUS_CHANGE_IN_REPO
+    fi
+  script: |
+    git clone https://github.com/ac000/libmtdac.git ${CIRRUS_WORKING_DIR}/libmtdac
+    cd ${CIRRUS_WORKING_DIR}/libmtdac/src
+    gmake CC=clang
+    git clone https://github.com/ac000/libac.git ${CIRRUS_WORKING_DIR}/libac
+    cd ${CIRRUS_WORKING_DIR}/libac/src
+    gmake CC=clang
+    export LD_LIBRARY_PATH="${CIRRUS_WORKING_DIR}/libmtdac/src:${CIRRUS_WORKING_DIR}/libac/src"
+    cd ${CIRRUS_WORKING_DIR}
+    CFLAGS="-I${CIRRUS_WORKING_DIR}/libmtdac/include -I${CIRRUS_WORKING_DIR}/libac/src/include -Werror" LDFLAGS="-L${CIRRUS_WORKING_DIR}/libmtdac/src -L${CIRRUS_WORKING_DIR}/libac/src" gmake -C src/ CC=clang V=1
