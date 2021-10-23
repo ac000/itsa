@@ -6,13 +6,13 @@ on:
     paths:
       - Makefile
       - 'src/**'
-      - '.github/workflows/**'
+      - '.github/workflows/build_tests.yaml'
   pull_request:
     branches: master
     paths:
       - Makefile
       - 'src/**'
-      - '.github/workflows/**'
+      - '.github/workflows/build_tests.yaml'
 
 jobs:
   # GitHub Currently only supports running directly on Ubuntu,
