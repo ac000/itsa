@@ -25,4 +25,4 @@ task:
     gmake CC=clang
     export LD_LIBRARY_PATH="${CIRRUS_WORKING_DIR}/libmtdac/src:${CIRRUS_WORKING_DIR}/libac/src"
     cd ${CIRRUS_WORKING_DIR}
-    CFLAGS="-I${CIRRUS_WORKING_DIR}/libmtdac/include -I${CIRRUS_WORKING_DIR}/libac/src/include -Werror" LDFLAGS="-L${CIRRUS_WORKING_DIR}/libmtdac/src -L${CIRRUS_WORKING_DIR}/libac/src" gmake -C src/ CC=clang V=1
+    CFLAGS="-I${CIRRUS_WORKING_DIR}/libmtdac/include -I${CIRRUS_WORKING_DIR}/libac/src/include -Werror" LDFLAGS="-L${CIRRUS_WORKING_DIR}/libmtdac/src -L${CIRRUS_WORKING_DIR}/libac/src" gmake CC=clang V=1
