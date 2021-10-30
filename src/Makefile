@@ -4,7 +4,7 @@ GIT_VERSION = \"$(shell git describe --always --long --dirty --all)\"
 
 DEPDIR  := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
-DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$(@F).Td
 
 CC	= gcc
 CFLAGS += -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 -g -O2 \
@@ -13,11 +13,9 @@ CFLAGS += -Wall -Wextra -Wdeclaration-after-statement -Wvla -std=gnu99 -g -O2 \
 	  -DGIT_VERSION=${GIT_VERSION} -pipe
 LDFLAGS += -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
 LIBS	+= -lmtdac -lac -lsqlite3 -ljansson
-POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
+POSTCOMPILE = @mv -f $(DEPDIR)/$(@F).Td $(DEPDIR)/$(@F).d && touch $@
 
-COMPILER := $(shell $(CC) --version 2> /dev/null | grep -oE 'GCC|clang')
-
-ifeq "$(COMPILER)" "GCC"
+ifeq ($(CC),gcc)
         GCC_MAJOR  := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 1)
         GCC_MINOR  := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 2)
         GCC_SUB	   := $(shell gcc -dumpfullversion -dumpversion | cut -d . -f 3)
@@ -55,18 +53,29 @@ $(APP): $(objects)
 	$(v)$(CC) $(LDFLAGS) $(ASAN) -o $@ $(objects) $(LIBS)
 
 %.o: %.c
-%.o: %.c $(DEPDIR)/%.d
+%.o: %.c $(DEPDIR)/%.o.d
 	@echo -e "  CC\t$@"
+	$(v)$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
+	$(POSTCOMPILE)
+
+headers := $(wildcard *.h)
+hdrobjs := $(headers:.h=.gch)
+
+hdrchk: $(hdrobjs)
+%.gch: %.h
+%.gch: %.h $(DEPDIR)/%.gch.d
+	@echo -e "  CC\t$<"
 	$(v)$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
 	$(POSTCOMPILE)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
-include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(sources))))
+include $(wildcard $(patsubst %,$(DEPDIR)/%.o.d,$(basename $(sources))))
+include $(wildcard $(patsubst %,$(DEPDIR)/%.gch.d,$(basename $(headers))))
 
 .PHONY: clean
 clean:
-	$(v)rm -f $(objects) $(APP)
+	$(v)rm -f $(objects) $(hdrobjs) $(APP)
 	$(v)rm -f $(DEPDIR)/*
 	$(v)rmdir $(DEPDIR)
