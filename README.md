@@ -10,9 +10,10 @@ It makes use of [libmtdac](https://github.com/ac000/libmtdac)
 
 # Status
 
-[2021-03-05] Started the process of obtaining production credentials.
-[2021-11-19] Finally have production credentials! You can see the gory details
-of the journey [here](https://github.com/ac000/libmtdac/discussions/18).
+### Credentials
+
+- [2021-03-05] Started the process of obtaining production credentials.
+- [2021-11-19] Finally have production credentials! You can see the gory details of the journey [here](https://github.com/ac000/libmtdac/discussions/18).
 
 Unfortunately anyone wishing to use itsa will have to go through the same
 procedure by signing up to the
