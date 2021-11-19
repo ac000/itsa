@@ -11,6 +11,19 @@ It makes use of [libmtdac](https://github.com/ac000/libmtdac)
 # Status
 
 [2021-03-05] Started the process of obtaining production credentials.
+[2021-11-19] Finally have production credentials! You can see the gory details
+of the journey [here](https://github.com/ac000/libmtdac/discussions/18).
+
+Unfortunately anyone wishing to use itsa will have to go through the same
+procedure by signing up to the
+[HMRC Developer HUB](https://developer.service.hmrc.gov.uk/api-documentation)
+and registering this application and then applying for production credentials.
+
+Feel free to
+[email](mailto:Andrew%20Clayton%20%3candrew%40digital-domain.net%3e?subject=%5bitsa%20registration%5d%20)
+me with any questions regarding this particular bit. General questions/issues
+should be done through the GitHub [itsa](https://github.com/ac000/itsa)
+project.
 
 itsa currently supports the following actions
 
