@@ -44,7 +44,7 @@
 #define ITSA_CFG		".config/itsa/config.json"
 #define DEFAULT_EDITOR		"vi"
 
-#define list_for_each(list)	for ( ; list; list = list->next)
+#define list_for_each(cur, list)	for (cur = list; cur; cur = cur->next)
 
 #define MSG_INFO		"#HI_BLUE#INFO#RST#"
 #define MSG_WARN		"#HI_YELLOW#WARNINGS#RST#"
@@ -386,15 +386,13 @@ static void get_data(const char *start, const char *end, long *income,
 	printc("Items for period #BOLD#%s#RST# to #BOLD#%s#RST#\n\n",
 	       start, end);
 	printc("#GREEN#  Income(s) :-#RST#\n");
-	p = i_list;
-	list_for_each(p)
+	list_for_each(p, i_list)
 		printf("    %s\n", (char *)p->data);
 	printc("#CHARC#%79s#RST#", "------------\n");
 	printc("#BOLD#%77.2f#RST#\n", *income / 100.0f);
 	printf("\n");
 	printc("#RED#  Expense(s) :-#RST#\n");
-	p = e_list;
-	list_for_each(p)
+	list_for_each(p, e_list)
 		printf("    %s\n", (char *)p->data);
 	printc("#CHARC#%79s#RST#", "------------\n");
 	printc("#BOLD#%77.2f#RST#\n", *expenses / 100.0f);
