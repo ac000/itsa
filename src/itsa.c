@@ -2337,6 +2337,10 @@ static int do_init_all(const struct mtd_cfg *cfg)
 
 static void print_api_info(void)
 {
+	struct timespec tp;
+	struct tm tm;
+	char buf[32] = "\0";
+
 	printic("***\n");
 	printic("*** Using %s API\n",
 		is_prod_api ? "#RED#PRODUCTION#RST#" : "#TANG#TEST#RST#");
@@ -2345,6 +2349,12 @@ static void print_api_info(void)
 		goto out;
 	printic("*** Using business : #BOLD#%s#RST# [#BOLD#%s#RST#]\n",
 		BUSINESS_NAME, BUSINESS_ID);
+	printic("***\n");
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	localtime_r(&tp.tv_sec, &tm);
+	strftime(buf, sizeof(buf), "%FT%T", &tm);
+	printic("*** Started @ #BOLD#%s#RST#\n", buf);
 	printic("***\n");
 
 out:
