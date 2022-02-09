@@ -46,12 +46,12 @@ jobs:
         # number is not actually important to just test the build.
         run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make GIT_VERSION=\\\"v0.0.0\\\" V=1
 
-  # CentOS 8 / glibc 2.28 / gcc 8.4.1
-  centos_8:
+  # Rocky Linux 8 (RHEL clone) / glibc 2.28 / gcc 8.5.0
+  rocky-linux-8:
     runs-on: ubuntu-latest
 
     container:
-      image: centos:8
+      image: rockylinux:8
 
     steps:
       - name: Install tools/deps
