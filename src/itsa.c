@@ -1069,14 +1069,11 @@ static int biss_se_summary(const char *tax_year)
 	const char *key;
 	char *plcolor = "#GREEN#";
 	char *pltext = "Profit";
-	char qs[56] = "\0";
 	int ret = -1;
 	int err;
 
-	snprintf(qs, sizeof(qs), "?selfEmploymentId=%s&taxYear=%s",
-		 BUSINESS_ID, tax_year);
-
-	err = mtd_biss_get_self_employment(qs, &jbuf);
+	err = mtd_biss_get_summary("self-employment", tax_year, BUSINESS_ID,
+				   &jbuf);
 	if (err) {
 		printec("Couldn't get BISS Self-Employment Annual Summary. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
