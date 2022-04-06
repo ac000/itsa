@@ -101,6 +101,33 @@ jobs:
       - name: make
         run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
+  # Alpine Linux with musl libc and GCC
+  alpine:
+    runs-on: ubuntu-latest
+
+    container:
+      image: alpine
+
+    steps:
+      - name: Install tools/deps
+        run: |
+          apk add build-base linux-headers git jansson-dev curl-dev sqlite-dev
+          git clone https://github.com/ac000/libmtdac.git ${RUNNER_TEMP}/libmtdac
+          cd ${RUNNER_TEMP}/libmtdac/src
+          make
+          cd -
+          git clone https://github.com/ac000/libac.git ${RUNNER_TEMP}/libac
+          cd ${RUNNER_TEMP}/libac/src
+          make
+          export LD_LIBRARY_PATH="${RUNNER_TEMP}/libmtdac/src:${RUNNER_TEMP}/libac/src"
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: "0"
+
+      - name: make
+        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
+
   # Fedora 34 / glibc 2.33 / gcc 11.2 / clang 12.0
   # Fedora 35 / glibc 2.34 / gcc 11.2 / clang 13.0
   fedora:
