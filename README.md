@@ -32,7 +32,7 @@ itsa currently supports the following actions
   - Create and update Self-Employment periods
   - Create/Update a Self-Employment annual summary
   - Submit an End-of-Year Statement
-  - Crystallise a tax return
+  - Submit a final declaration
   - List/view tax calculations
   - View an End-of-Year tax/nics estimate
   - Add/view/amend savings accounts
@@ -182,7 +182,7 @@ Commands
     update-annual-summary <tax_year>
     get-end-of-period-statement-obligations [<start> <end>]
     submit-end-of-period-statement <start> <end>
-    crystallise <tax_year>
+    submit-final-declaration <tax_year>
     list-calculations [tax_year]
     view-end-of-year-estimate
     add-savings-account

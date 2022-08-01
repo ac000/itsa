@@ -3,7 +3,7 @@
 /*
  * itsa.c - Provide Income TAX Self-Assessment via UK's HMRC MTD API
  *
- * Copyright (c) 2021		Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (c) 2021 - 2022	 Andrew Clayton <andrew@digital-domain.net>
  */
 
 #define _GNU_SOURCE
@@ -56,14 +56,15 @@
 #define TAX_YEAR_SZ		7
 
 #define INFO	"[#INFO#INFO#RST#] "
-#define CRYSTALLISATION_DECLARATION \
+#define FINAL_DECLARATION \
 INFO "Before you can submit the information displayed here in response\n"\
 INFO "to your notice to file from HM Revenue & Customs, you must read\n"\
 INFO "and agree to the following statement by selecting (y).\n"\
 "\n"\
-INFO "The information I have provided is correct and complete to the\n"\
-INFO "best of my knowledge and belief. If you give false information\n"\
-INFO "you may have to pay financial penalties and face prosecution.\n"\
+INFO "I declare that the information and self-assessment I have filed are\n"\
+INFO "(taken together) correct and complete to the best of my knowledge.\n"\
+INFO "I understand that I may have to pay financial penalties and face\n"\
+INFO "prosecution if I give false information.\n"\
 "\n"\
 INFO "By saying yes (y) below, you are declaring that you agree with\n"\
 INFO "the above and wish to proceed with final crystallisation.\n"
@@ -80,33 +81,6 @@ INFO "information.\n"
 enum period_action {
 	PERIOD_CREATE,
 	PERIOD_UPDATE,
-};
-
-struct api_error {
-	const int error;
-	const char *str;
-};
-
-enum ic_end_of_year_est_error {
-	/* 0 success, (-)1 non-specific handled error */
-	RULE_CALCULATION_ERROR_MESSAGES_EXIST = 2,
-	MATCHING_RESOURCE_NOT_FOUND,
-	END_OF_YEAR_ESTIMATE_NOT_PRESENT,
-};
-
-static const struct api_error ic_end_of_year_est_errors[] = {
-	{
-		RULE_CALCULATION_ERROR_MESSAGES_EXIST,
-		"RULE_CALCULATION_ERROR_MESSAGES_EXIST"
-	}, {
-		MATCHING_RESOURCE_NOT_FOUND,
-		"MATCHING_RESOURCE_NOT_FOUND"
-	}, {
-		END_OF_YEAR_ESTIMATE_NOT_PRESENT,
-		"END_OF_YEAR_ESTIMATE_NOT_PRESENT"
-	},
-
-	{ }
 };
 
 static struct {
@@ -140,7 +114,7 @@ static void disp_usage(void)
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
 	printf("    submit-end-of-period-statement <start> <end>\n");
-	printf("    crystallise <tax_year>\n");
+	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations [tax_year]\n");
 	printf("    view-end-of-year-estimate\n");
 	printf("    add-savings-account\n");
@@ -185,28 +159,6 @@ static json_t *get_result_json(const char *buf)
 	json_decref(jarray);
 
 	return result;
-}
-
-static int get_api_err(const struct api_error *errors, const char *buf)
-{
-	json_t *result = get_result_json(buf);
-	json_t *code = json_object_get(result, "code");
-	int ret = -1;
-
-	if (!code)
-		return -1;
-
-	while (errors->str) {
-		if (strcmp(json_string_value(code), errors->str) == 0) {
-			ret = -errors->error;
-			break;
-		}
-
-		errors++;
-	}
-	json_decref(result);
-
-	return ret;
 }
 
 /*
@@ -401,57 +353,6 @@ static void get_data(const char *start, const char *end, long *income,
 	ac_slist_destroy(&e_list, free);
 }
 
-static void display_messages(const json_t *result, const char *fmt,
-			     const char *mtype)
-{
-	json_t *msgs;
-	json_t *msg;
-	size_t index;
-
-	msgs = json_object_get(result, mtype);
-	if (!msgs)
-		return;
-
-	printc("\n #CHARC#----#RST# %s #CHARC#----#RST#\n", fmt);
-
-	json_array_foreach(msgs, index, msg) {
-		json_t *text;
-
-		text = json_object_get(msg, "text");
-		printf(" [\n   %s\n ]\n", json_string_value(text));
-	}
-}
-
-static int display_calculation_messages(const char *cid)
-{
-	json_t *result;
-	char *jbuf;
-	int err;
-	int ret = -1;
-
-	err = mtd_ic_sa_get_messages(cid, NULL, &jbuf);
-	if (err && mtd_hmrc_error(jbuf) != MTD_HMRC_ERR_NO_MESSAGES_PRESENT) {
-		printec("Couldn't get calculation messages. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		goto out_free_buf;
-	}
-
-	result = get_result_json(jbuf);
-
-	display_messages(result, MSG_ERR, "errors");
-	display_messages(result, MSG_WARN, "warnings");
-	display_messages(result, MSG_INFO, "info");
-
-	json_decref(result);
-
-	ret = 0;
-
-out_free_buf:
-	free(jbuf);
-
-	return ret;
-}
-
 static void print_bread_crumb(const char *bread_crumb[])
 {
 	char str[192];
@@ -546,7 +447,31 @@ decr_level:
 	}
 }
 
-static int display_end_of_year_est(const char *cid)
+static void display_messages(const json_t *msgs_obj, const char *fmt,
+			     const char *mtype)
+{
+	json_t *msgs;
+	json_t *msg;
+	size_t index;
+
+	msgs = json_object_get(msgs_obj, mtype);
+	if (!msgs)
+		return;
+
+	printc("\n #CHARC#----#RST# %s #CHARC#----#RST#\n", fmt);
+
+	json_array_foreach(msgs, index, msg) {
+		json_t *id;
+		json_t *text;
+
+		id = json_object_get(msg, "id");
+		text = json_object_get(msg, "text");
+		printf(" [\n   %s: %s\n ]\n", json_string_value(id),
+		       json_string_value(text));
+	}
+}
+
+static int display_end_of_year_est(const char *tax_year, const char *cid)
 {
 	json_t *result;
 	json_t *obj;
@@ -555,26 +480,10 @@ static int display_end_of_year_est(const char *cid)
 	int ret = -1;
 	int err;
 
-	err = mtd_ic_sa_get_end_of_year_est(cid, &jbuf);
+	err = mtd_ic_get_calculation(tax_year, cid, &jbuf);
 	if (err) {
-		enum ic_end_of_year_est_error ecode;
-
-		printec("Couldn't get End of Year estimate. ");
-
-		ecode = get_api_err(ic_end_of_year_est_errors, jbuf);
-		switch (-ecode) {
-		case RULE_CALCULATION_ERROR_MESSAGES_EXIST:
-			printec("Error messages exist.\n");
-			break;
-		case MATCHING_RESOURCE_NOT_FOUND:
-		case END_OF_YEAR_ESTIMATE_NOT_PRESENT:
-			printec("No end of Year Estimates.\n");
-			break;
-		default:
-			printec("(%s)\n%s\n", mtd_err2str(err), jbuf);
-		}
-
-		ret = ecode;
+		printec("Couldn't get calculation. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
 
@@ -582,13 +491,10 @@ static int display_end_of_year_est(const char *cid)
 
 	result = get_result_json(jbuf);
 
+	JKEY_FW = 32;
 	printc("#BOLD# Summary#RST#:-\n");
-	obj = json_object_get(result, "summary");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printc("#BOLD# Details#RST#:-\n");
-	obj = json_object_get(result, "detail");
+	obj = json_object_get(result, "calculation");
+	obj = json_object_get(obj, "endOfYearEstimate");
 	print_json_tree(obj, bread_crumb, 0, NULL);
 
 	json_decref(result);
@@ -601,159 +507,36 @@ out_free_buf:
 	return ret;
 }
 
-static int display_calulated_a_d_r(const char *cid)
+static void display_calculation_messages(const json_t *msgs)
 {
-	json_t *result;
-	json_t *obj;
-	char *jbuf;
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = { NULL };
-	int ret = -1;
-	int err;
+	if (!msgs)
+		return;
 
-	err = mtd_ic_sa_get_allowances_deductions_reliefs(cid, &jbuf);
-	if (err) {
-		printec("Couldn't get allowances, deductions & reliefs "
-			"calulation. (%s)\n%s\n", mtd_err2str(err), jbuf);
-		goto out_free_buf;
-	}
+	display_messages(msgs, MSG_ERR, "errors");
+	display_messages(msgs, MSG_WARN, "warnings");
+	display_messages(msgs, MSG_INFO, "info");
+}
 
-	printsc("Allowances, deductions & reliefs calculation for "
-		"#BOLD#%s#RST#\n", cid);
+static void display_calculation(json_t *obj)
+{
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1];
+	json_t *tmp;
+	const json_t *msgs;
 
-	result = get_result_json(jbuf);
+	tmp = json_object_get(obj, "messages");
+	msgs = json_copy(tmp);
+	json_object_del(obj, "messages");
+	json_object_del(obj, "links");
 
-	printc("#BOLD# Summary#RST#:-\n");
-	obj = json_object_get(result, "summary");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
+	JKEY_FW = 36;
 	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printc("#BOLD# Details#RST#:-\n");
-	obj = json_object_get(result, "detail");
 	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	json_decref(result);
-
-	ret = 0;
-
-out_free_buf:
-	free(jbuf);
-
-	return ret;
+	display_calculation_messages(msgs);
 }
 
-static int display_calulated_income_tax_nics(const char *cid)
+static int get_calculation(const char *tax_year, const char *cid)
 {
 	json_t *result;
-	json_t *obj;
-	char *jbuf;
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = { NULL };
-	int ret = -1;
-	int err;
-
-	err = mtd_ic_sa_get_income_tax_nics_calc(cid, &jbuf);
-	if (err) {
-		printec("Couldn't get income TAX NICs calculation. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		goto out_free_buf;
-	}
-
-	printsc("Income TAX NICs calculation for #BOLD#%s#RST#\n", cid);
-
-	result = get_result_json(jbuf);
-
-	printc("#BOLD# Summary#RST#:-\n");
-	obj = json_object_get(result, "summary");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printc("#BOLD# Details#RST#:-\n");
-	obj = json_object_get(result, "detail");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	json_decref(result);
-
-	ret = 0;
-
-out_free_buf:
-	free(jbuf);
-
-	return ret;
-}
-
-static int display_taxable_income(const char *cid)
-{
-	json_t *result;
-	json_t *obj;
-	char *jbuf;
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = { NULL };
-	int ret = -1;
-	int err;
-
-	err = mtd_ic_sa_get_taxable_income(cid, &jbuf);
-	if (err) {
-		printec("Couldn't get taxable income. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		goto out_free_buf;
-	}
-
-	printsc("Taxable Income for calculation #BOLD#%s#RST#\n", cid);
-
-	result = get_result_json(jbuf);
-
-	printc("#BOLD# Summary#RST#:-\n");
-	obj = json_object_get(result, "summary");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
-	printc("#BOLD# Details#RST#:-\n");
-	obj = json_object_get(result, "detail");
-	print_json_tree(obj, bread_crumb, 0, NULL);
-
-	json_decref(result);
-
-	ret = 0;
-
-out_free_buf:
-	free(jbuf);
-
-	return ret;
-}
-
-#define NO_EST	0x01	/* Don't display the End-of-Year estimate */
-static int display_individual_calculations(const char *cid, int flags)
-{
-	int err;
-
-	JKEY_FW = 46;
-
-	err = display_taxable_income(cid);
-	if (err)
-		return -1;
-
-	err = display_calulated_income_tax_nics(cid);
-	if (err)
-		return -1;
-
-	err = display_calulated_a_d_r(cid);
-	if (err)
-		return -1;
-
-	if (flags & NO_EST)
-		return 0;
-	err = display_end_of_year_est(cid);
-	if (err)
-		return -1;
-
-	return 0;
-}
-
-static int get_calculation_meta(const char *cid)
-{
-	json_t *result;
-	json_t *tyear;
-	json_t *ec;
-	json_t *value;
-	const char *key;
 	char *jbuf;
 	int ret = -1;
 	int err;
@@ -761,15 +544,15 @@ static int get_calculation_meta(const char *cid)
 	int fib_sleep = -1;
 
 again:
-	err = mtd_ic_sa_get_calculation_meta(cid, &jbuf);
+	err = mtd_ic_get_calculation(tax_year, cid, &jbuf);
 	if ((err && err != -MTD_ERR_REQUEST) ||
 	    (err == -MTD_ERR_REQUEST && fib_sleep == 5)) {
-		printec("Couldn't get calculation metadata. (%s)\n%s\n",
+		printec("Couldn't get calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	} else if (err == -MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep, &state);
-		printic("Trying to get calculation metadata again in "
+		printic("Trying to get calculation again in "
 			"#BOLD#%d#RST# second(s)\n", fib_sleep);
 		fflush(stdout);
 		sleep(fib_sleep);
@@ -778,54 +561,11 @@ again:
 	}
 
 	result = get_result_json(jbuf);
-
-	ec = json_object_get(result, "calculationErrorCount");
-	if (ec && json_integer_value(ec) > 0) {
-		printec("There was a problem with your calculation. Check the "
-			"below messages\n        for ERROR's.\n");
-		goto out_free_json;
-	}
-
-	tyear = json_object_get(result, "taxYear");
-	printsc("Calculation Metadata for #BOLD#%s#RST#\n",
-		json_string_value(tyear));
-
-	json_object_foreach(result, key, value) {
-		char val[128];
-
-		switch (json_typeof(value)) {
-		case JSON_STRING:
-			snprintf(val, sizeof(val), "%s",
-				 json_string_value(value));
-			break;
-		case JSON_INTEGER:
-			snprintf(val, sizeof(val), "%lld",
-				 json_integer_value(value));
-			break;
-		case JSON_REAL:
-			snprintf(val, sizeof(val), "%.2f",
-				 json_real_value(value));
-			break;
-		case JSON_TRUE:
-		case JSON_FALSE:
-			snprintf(val, sizeof(val), "%s",
-				 json_is_true(value) ? "true" : "false");
-			break;
-		case JSON_NULL:
-			sprintf(val, "null");
-			break;
-		case JSON_OBJECT:
-		case JSON_ARRAY:
-			continue;
-		}
-
-		printc("#CHARC#%25s :#RST# %s\n", key, val);
-	}
+	printsc("Calculation for #BOLD#%s#RST#\n", tax_year);
+	display_calculation(result);
+	json_decref(result);
 
 	ret = 0;
-
-out_free_json:
-	json_decref(result);
 
 out_free:
 	free(jbuf);
@@ -833,19 +573,16 @@ out_free:
 	return ret;
 }
 
-static int crystallise(int argc, char *argv[])
+static int final_declaration(int argc, char *argv[])
 {
 	json_t *result;
 	json_t *cid_obj;
-	ac_jsonw_t *json = NULL;
-	struct mtd_dsrc_ctx dsctx;
 	char *jbuf;
 	char *s;
 	const char *cid;
 	char tyear[TAX_YEAR_SZ + 1];
 	char submit[32];
 	int ret = -1;
-	int calc_err;
 	int err;
 
 	if (argc < 3) {
@@ -855,9 +592,10 @@ static int crystallise(int argc, char *argv[])
 
 	snprintf(tyear, sizeof(tyear), "%s", argv[2]);
 
-	err = mtd_ic_cr_intent_to_crystallise(tyear, &jbuf);
+	err = mtd_ic_trigger_calculation(tyear, "?finalDeclaration=true",
+					 &jbuf);
 	if (err) {
-		printec("Intent to Crystallise failed. (%s)\n%s\n",
+		printec("Final declartion calculation failed. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free_buf;
 	}
@@ -866,33 +604,24 @@ static int crystallise(int argc, char *argv[])
 	cid_obj = json_object_get(result, "calculationId");
 	cid = json_string_value(cid_obj);
 
-	printsc("Intent to Crystallise calculationId: #BOLD#%s#RST#\n", cid);
+	printsc("Final declaration calculationId: #BOLD#%s#RST#\n", cid);
 
-	if (!is_prod_api)
-		extra_hdrs[0] = "Gov-Test-Scenario: CRYSTALLISATION_METADATA";
-	calc_err = get_calculation_meta(cid);
-	if (!calc_err) {
-		err = display_individual_calculations(cid, NO_EST);
-		if (err)
-			goto out_free_json;
-	}
-	err = display_calculation_messages(cid);
-	if (calc_err || err)
+	err = get_calculation(tyear, cid);
+	if (err)
 		goto out_free_json;
-	*extra_hdrs = NULL;
 
 	printf("\n");
-	printc(CRYSTALLISATION_DECLARATION);
+	printc(FINAL_DECLARATION);
 	printf("\n");
-	printcc("Crystallise this TAX return? (y/N)> ");
+	printcc("Submit 'Final Declaration' for this TAX return? (y/N)> ");
 
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || (*submit != 'y' && *submit != 'Y'))
 		goto out_ok;
 
 	printf("\n");
-	printic("About to #TANG#crystallise#RST# for #BOLD#%s#RST#\n\n",
-		tyear);
+	printic("About to submit a #TANG#Final Declaration#RST# for "
+		"#BOLD#%s#RST#\n\n", tyear);
 	printic("As a final check measure, just enter 'i agree' at the\n");
 	printic("prompt. Anything else will abandon the process.\n");
 	printf("\n");
@@ -904,29 +633,20 @@ static int crystallise(int argc, char *argv[])
 
 	free(jbuf);
 
-	json = ac_jsonw_init();
-	ac_jsonw_add_str(json, "calculationId", cid);
-	ac_jsonw_end(json);
-
-	dsctx.data_src.buf = ac_jsonw_get(json);
-	dsctx.data_len = -1;
-	dsctx.src_type = MTD_DATA_SRC_BUF;
-
-	err = mtd_ic_cr_crystallise(&dsctx, tyear, &jbuf);
+	err = mtd_ic_final_decl(tyear, cid, &jbuf);
 	if (err) {
-		printec("Failed to crystallise. (%s)\n%s\n", mtd_err2str(err),
-			jbuf);
+		printec("Failed to submit 'Final Declaration'. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
 		goto out_free_json;
 	}
 
-	printsc("Crystallisation done.\n");
+	printsc("Final Declaration done.\n");
 
 out_ok:
 	ret = 0;
 
 out_free_json:
 	json_decref(result);
-	ac_jsonw_free(json);
 
 out_free_buf:
 	free(jbuf);
@@ -1163,12 +883,9 @@ static int trigger_calculation(const char *tax_year)
 	json_t *result;
 	json_t *cid_obj;
 	ac_jsonw_t *json;
-	struct mtd_dsrc_ctx dsctx;
 	char *jbuf;
-	char *s;
 	const char *cid;
 	int ret = -1;
-	int calc_err;
 	int err;
 
 	json = ac_jsonw_init();
@@ -1176,11 +893,7 @@ static int trigger_calculation(const char *tax_year)
 	ac_jsonw_add_str(json, "taxYear", tax_year);
 	ac_jsonw_end(json);
 
-	dsctx.data_src.buf = ac_jsonw_get(json);
-	dsctx.data_len = -1;
-	dsctx.src_type = MTD_DATA_SRC_BUF;
-
-	err = mtd_ic_sa_trigger_calculation(&dsctx, &jbuf);
+	err = mtd_ic_trigger_calculation(tax_year, NULL, &jbuf);
 	if (err) {
 		printec("Couldn't trigger calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1193,22 +906,12 @@ static int trigger_calculation(const char *tax_year)
 	cid_obj = json_object_get(result, "id");
 	cid = json_string_value(cid_obj);
 
-	calc_err = get_calculation_meta(cid);
-	if (!calc_err) {
-		char submit[3];
-
-		printf("\n");
-		printcc("Display full calculation? (y/N)> ");
-		s = fgets(submit, sizeof(submit), stdin);
-		if (s && (*submit == 'y' || *submit == 'Y')) {
-			err = display_individual_calculations(cid, 0);
-			if (err)
-				goto out_free_json;
-		}
-	}
-	err = display_calculation_messages(cid);
-	if (calc_err || err)
+	err = get_calculation(tax_year, cid);
+	if (err) {
+		printec("Couldn't get calculation for %s/%s.\n", cid,
+			tax_year);
 		goto out_free_json;
+	}
 
 	ret = 0;
 
@@ -1471,7 +1174,7 @@ static int view_end_of_year_estimate(void)
 	get_tax_year(NULL, tyear);
 
 	snprintf(qs, sizeof(qs), "?taxYear=%s", tyear);
-	err = mtd_ic_sa_list_calculations(qs, &jbuf);
+	err = mtd_ic_list_calculations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1483,13 +1186,13 @@ static int view_end_of_year_estimate(void)
 	nr_calcs = json_array_size(obs);
 	while (nr_calcs--) {
 		json_t *calc = json_array_get(obs, nr_calcs);
-		json_t *type = json_object_get(calc, "type");
+		json_t *type = json_object_get(calc, "calculationType");
 		json_t *cid_obj;
 
 		if (strcmp(json_string_value(type), "inYear") != 0)
 			continue;
 
-		cid_obj = json_object_get(calc, "id");
+		cid_obj = json_object_get(calc, "calculationId");
 		cid = json_string_value(cid_obj);
 
 		break;
@@ -1502,12 +1205,7 @@ static int view_end_of_year_estimate(void)
 	}
 
 	printsc("Found inYear calculation for #BOLD#%s#RST#\n", tyear);
-	JKEY_FW = 32;
-	err = display_end_of_year_est(cid);
-	if (err == -RULE_CALCULATION_ERROR_MESSAGES_EXIST) {
-		display_calculation_messages(cid);
-		goto out_free_json;
-	}
+	display_end_of_year_est(tyear, cid);
 
 	ret = 0;
 
@@ -1520,6 +1218,23 @@ out_free_buf:
 	return ret;
 }
 
+struct calc_id {
+	const char *id;
+	const char *tax_year;
+};
+
+static void free_calc_id(void *data)
+{
+	struct calc_id *cid = data;
+
+	if (!cid)
+		return;
+
+	free((char *)cid->id);
+	free((char *)cid->tax_year);
+	free(cid);
+}
+
 static int list_calculations(int argc, char *argv[])
 {
 	json_t *result;
@@ -1529,16 +1244,16 @@ static int list_calculations(int argc, char *argv[])
 	char *s;
 	char qs[20] = "\0";
 	char submit[4];
-	const char *cid;
 	size_t index;
 	ac_slist_t *calcs = NULL;
+	struct calc_id *cid;
 	int err;
 	int ret = -1;
 
 	if (argc == 3)
 		snprintf(qs, sizeof(qs), "?taxYear=%s", argv[2]);
 
-	err = mtd_ic_sa_list_calculations(qs, &jbuf);
+	err = mtd_ic_list_calculations(qs, &jbuf);
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1550,29 +1265,26 @@ static int list_calculations(int argc, char *argv[])
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "calculations");
 
-	printc("#CHARC#  %3s %26s %24s %14s #RST#\n",
-	       "idx", "calculation_id", "timestamp", "type");
+	printc("#CHARC#  %3s %12s %26s %29s #RST#\n",
+	       "idx", "tax_year", "calculation_id", "type");
 	printc("#CHARC#"
 	       " ------------------------------------------------------------"
 	       "-----------------#RST#\n");
 	json_array_foreach(obs, index, calculation) {
-		json_t *id_obj = json_object_get(calculation, "id");
-		json_t *ts_obj = json_object_get(calculation,
-						 "calculationTimestamp");
-		json_t *type = json_object_get(calculation, "type");
+		json_t *id_obj = json_object_get(calculation,
+						 "calculationId");
+		json_t *type = json_object_get(calculation, "calculationType");
+		json_t *tax_year = json_object_get(calculation, "taxYear");
 		const char *id = json_string_value(id_obj);
-		const char *ts = json_string_value(ts_obj);
-		char date[11];
-		char stime[6];
+		const char *tyear = json_string_value(tax_year);
 
-		memcpy(date, ts, 10);
-		date[10] = '\0';
-		memcpy(stime, ts + 11, 5);
-		stime[5] = '\0';
-		printc("  #BOLD#%2zu#RST#%39s %11s %s %11s\n",
-		       index + 1, id, date, stime, json_string_value(type));
+		printc("  #BOLD#%2zu#RST#%13s %39s %18s\n",
+		       index + 1, tyear, id, json_string_value(type));
 
-		ac_slist_add(&calcs, strdup(id));
+		cid = malloc(sizeof(*cid));
+		cid->id = strdup(id);
+		cid->tax_year = strdup(tyear);
+		ac_slist_add(&calcs, cid);
         }
 
 	printf("\n");
@@ -1583,12 +1295,10 @@ static int list_calculations(int argc, char *argv[])
 
 	index = atoi(submit) - 1;
 	cid = ac_slist_nth_data(calcs, index);
-	get_calculation_meta(cid);
-	display_individual_calculations(cid, 0);
-	display_calculation_messages(cid);
+	get_calculation(cid->tax_year, cid->id);
 
 out_free_json:
-	ac_slist_destroy(&calcs, free);
+	ac_slist_destroy(&calcs, free_calc_id);
 	json_decref(result);
 
 	ret = 0;
@@ -2482,8 +2192,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return submit_eop_statement(argc, argv);
 	if (IS_CMD("get-end-of-period-statement-obligations"))
 		return get_eop_obligations(argc, argv);
-	if (IS_CMD("crystallise"))
-		return crystallise(argc, argv);
+	if (IS_CMD("submit-final-declaration"))
+		return final_declaration(argc, argv);
 	if (IS_CMD("list-calculations"))
 		return list_calculations(argc, argv);
 	if (IS_CMD("view-end-of-year-estimate"))
