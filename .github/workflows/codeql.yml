@@ -51,7 +51,7 @@ jobs:
           queries: +security-and-quality
 
       - name: Build cpp
-        run: CFLAGS="-I${LGTM_WORKSPACE}/libmtdac/include -I${LGTM_WORKSPACE}/libac/src/include" LDFLAGS="-L${LGTM_WORKSPACE}/libmtdac/src -L${LGTM_WORKSPACE}/libac/src" make -C src/
+        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make -C src/
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
