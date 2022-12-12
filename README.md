@@ -1,7 +1,7 @@
 # itsa - Income Tax Self-Assessment
 
-[![Builds](https://github.com/ac000/itsa/actions/workflows/build_tests.yaml/badge.svg)](https://github.com/ac000/itsa/actions/workflows/build_tests.yaml)
-[![FreeBSD Build Status](https://api.cirrus-ci.com/github/ac000/itsa.svg)](https://cirrus-ci.com/github/ac000/itsa)
+[![Builds](https://github.com/ac000/itsa/actions/workflows/build_tests.yaml/badge.svg)](https://github.com/ac000/itsa/actions/workflows/build_tests.yaml "GitHub workflow builds")
+[![FreeBSD Build Status](https://api.cirrus-ci.com/github/ac000/itsa.svg)](https://cirrus-ci.com/github/ac000/itsa "Cirrus FreeBSD builds")
 [![CodeQL](https://github.com/ac000/itsa/workflows/CodeQL/badge.svg)](https://github.com/ac000/itsa/actions?query=workflow:CodeQL "Code quality workflow status")
 
 itsa is a program for interacting with the UK's HMRC [Make Tax Digital](https://developer.service.hmrc.gov.uk/api-documentation) APIs.
