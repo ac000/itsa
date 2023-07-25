@@ -95,12 +95,19 @@ void set_colors(void)
 	if (!color)
 		goto out_set;
 
-	if (*color == 't' || *color == 'T' ||
-	    *color == 'y' ||  *color == 'Y') {
+	switch (*color) {
+	case 't':
+	case 'T':
+	case 'y':
+	case 'Y':
 		mode = TC_COLORIS_MODE_ON;
-	} else if (*color == 'f' || *color == 'F' ||
-	    *color == 'n' ||  *color == 'N') {
+		break;
+	case 'f':
+	case 'F':
+	case 'n':
+	case 'N':
 		mode = TC_COLORIS_MODE_OFF;
+		break;
 	}
 
 out_set:
