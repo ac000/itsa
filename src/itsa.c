@@ -165,20 +165,18 @@ static json_t *get_result_json(const char *buf)
  * For doing request back-off, following the Fibonaci Sequence
  * (skipping 0)
  */
-static int next_fib(int last, int *state)
+static int next_fib(int last)
 {
 	int Fn;
+	static int state;
 
-	if (last == -1)
-		last = *state = 0;
-	else if (last == 0)
+	if (last == -1) {
+		state = 0;
 		return 1;
-	else
-		Fn = *state + last;
+	}
 
-	*state = last;
-	if (*state == 0)
-		return 1;
+	Fn = state + last;
+	state = last;
 
 	return Fn;
 }
@@ -540,7 +538,6 @@ static int get_calculation(const char *tax_year, const char *cid)
 	char *jbuf;
 	int ret = -1;
 	int err;
-	int state;
 	int fib_sleep = -1;
 
 again:
@@ -551,7 +548,7 @@ again:
 			mtd_err2str(err), jbuf);
 		goto out_free;
 	} else if (err == -MTD_ERR_REQUEST) {
-		fib_sleep = next_fib(fib_sleep, &state);
+		fib_sleep = next_fib(fib_sleep);
 		printic("Trying to get calculation again in "
 			"#BOLD#%d#RST# second(s)\n", fib_sleep);
 		fflush(stdout);
