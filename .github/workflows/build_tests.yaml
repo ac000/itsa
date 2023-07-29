@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: alpine
+      image: alpine:edge
 
     steps:
       - name: Install tools/deps
@@ -128,15 +128,15 @@ jobs:
       - name: make
         run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
-  # Fedora 34 / glibc 2.33 / gcc 11.2 / clang 12.0
-  # Fedora 35 / glibc 2.34 / gcc 11.2 / clang 13.0
+  # Fedora 37 / glibc 2.36 / gcc 12.1 / clang 15
+  # Fedora 38 / glibc 2.37 / gcc 13.1 / clang 16
   fedora:
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'fedora:34', 'fedora:35' ]
+        os: [ 'fedora:37', 'fedora:38' ]
         compiler: [ 'gcc', 'clang' ]
 
     container:
