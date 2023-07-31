@@ -71,7 +71,9 @@ jobs:
           fetch-depth: "0"
 
       - name: make
-        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
+        run: |
+          git config --global --add safe.directory /__w/itsa/itsa
+          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
   # Debian 11 / glibc 2.31 / gcc 10.2
   debian_11:
@@ -99,7 +101,9 @@ jobs:
           fetch-depth: "0"
 
       - name: make
-        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
+        run: |
+          git config --global --add safe.directory /__w/itsa/itsa
+          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
   # Alpine Linux with musl libc and GCC
   alpine:
@@ -126,7 +130,9 @@ jobs:
           fetch-depth: "0"
 
       - name: make
-        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
+        run: |
+          git config --global --add safe.directory /__w/itsa/itsa
+          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
   # Fedora 37 / glibc 2.36 / gcc 12.1 / clang 15
   # Fedora 38 / glibc 2.37 / gcc 13.1 / clang 16
@@ -160,4 +166,6 @@ jobs:
           fetch-depth: "0"
 
       - name: make CC=${{ matrix.compiler }}
-        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make CC=${{ matrix.compiler }} V=1
+        run: |
+          git config --global --add safe.directory /__w/itsa/itsa
+          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make CC=${{ matrix.compiler }} V=1
