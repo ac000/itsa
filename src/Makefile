@@ -50,12 +50,12 @@ endif
 all: $(APP)
 
 $(APP): $(objects)
-	@echo -e "  LNK\t$@"
+	@echo "  LNK  $@"
 	$(v)$(CC) $(LDFLAGS) $(ASAN) -o $@ $(objects) $(LIBS)
 
 %.o: %.c
 %.o: %.c $(DEPDIR)/%.o.d
-	@echo -e "  CC\t$@"
+	@echo "  CC   $@"
 	$(v)$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
 	$(POSTCOMPILE)
 
@@ -65,7 +65,7 @@ hdrobjs := $(headers:.h=.gch)
 hdrchk: $(hdrobjs)
 %.gch: %.h
 %.gch: %.h $(DEPDIR)/%.gch.d
-	@echo -e "  CC\t$<"
+	@echo "  CC   $<"
 	$(v)$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
 	$(POSTCOMPILE)
 
