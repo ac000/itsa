@@ -3,7 +3,7 @@ TARGETS = itsa hdrchk
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
 
-MAKE_OPTS = --no-print-directory V=$V
+MAKE_OPTS = --no-print-directory
 
 .PHONY: itsa
 itsa:
