@@ -3,7 +3,7 @@
 /*
  * itsa.c - Provide Income TAX Self-Assessment via UK's HMRC MTD API
  *
- * Copyright (c) 2021 - 2022	 Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (c) 2021 - 2025	 Andrew Clayton <ac@sigsegv.uk>
  */
 
 #define _GNU_SOURCE
@@ -137,7 +137,7 @@ static void free_config(void)
 static time_t xtime(void)
 {
 	const char *set_date = getenv("ITSA_SET_DATE");
-	struct tm tm = { 0 };
+	struct tm tm = {};
 
 	if (!set_date)
 		return time(NULL);
@@ -188,9 +188,9 @@ static const char *get_period_color(const char *start, const char *end,
 	time_t st;
 	time_t et;
 	time_t dt;
-	struct tm stm = { 0 };
-	struct tm etm = { 0 };
-	struct tm dtm = { 0 };
+	struct tm stm = {};
+	struct tm etm = {};
+	struct tm dtm = {};
 
 	strptime(start, "%F", &stm);
 	strptime(end, "%F", &etm);
@@ -219,7 +219,7 @@ static const char *get_period_color(const char *start, const char *end,
 
 static char *get_tax_year(const char *date, char *buf)
 {
-	struct tm tm = { 0 };
+	struct tm tm = {};
 	char year[5];
 	char year2[5];
 
@@ -474,7 +474,7 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 	json_t *result;
 	json_t *obj;
 	char *jbuf;
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = { NULL };
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
 	int ret = -1;
 	int err;
 
@@ -839,7 +839,7 @@ static const struct {
 	const char *exempt_code;
 	const char *desc;
 } class4_nic_ecode_map[] = {
-	{ NULL,  NULL },
+	{},
 	{ "001", "Non Resident" },
 	{ "002", "Trustee" },
 	{ "003", "Diver" },
@@ -864,7 +864,7 @@ static bool print_c4nic_excempt_type(const char *key, json_t *value)
 
 static int disp_annual_summary(json_t *root)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = { NULL };
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
 
 	if (!root)
 		return -1;
@@ -1009,7 +1009,7 @@ again:
 	}
 	case 'e':
 	case 'E': {
-		const char *args[3] = { NULL };
+		const char *args[3] = {};
 		int child_pid;
 		int status;
 
@@ -1711,7 +1711,7 @@ static int amend_savings_account(int argc, char *argv[])
 	char tpath[PATH_MAX];
 	const char *tyear;
 	const char *said;
-	const char *args[3] = { NULL };
+	const char *args[3] = {};
 	int child_pid;
 	int status;
 	int tmpfd;
