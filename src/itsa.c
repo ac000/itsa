@@ -27,12 +27,6 @@
 #include <jansson.h>
 
 #include <libmtdac/mtd.h>
-#include <libmtdac/mtd-bd.h>
-#include <libmtdac/mtd-biss.h>
-#include <libmtdac/mtd-ibeops.h>
-#include <libmtdac/mtd-ic.h>
-#include <libmtdac/mtd-ob.h>
-#include <libmtdac/mtd-sa.h>
 
 #include <libac.h>
 
@@ -69,11 +63,6 @@ INFO "prosecution if I give false information.\n"\
 INFO "By saying yes (y) below, you are declaring that you agree with\n"\
 INFO "the above and wish to proceed with final crystallisation.\n"
 
-enum period_action {
-	PERIOD_CREATE,
-	PERIOD_UPDATE,
-};
-
 static struct {
 	const char *gnc;
 	const char *bid;
@@ -100,12 +89,12 @@ static void disp_usage(void)
 	printf("    switch-business\n");
 	printf("\n");
 	printf("    list-periods [<start> <end>]\n");
-	printf("    create-period [<start> <end>]\n");
-	printf("    update-period <period_id>\n");
+	printf("    create-period <tax_year> [<start> <end>]\n");
+	printf("    update-period <tax_year> <period_id>\n");
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
 	printf("    submit-final-declaration <tax_year>\n");
-	printf("    list-calculations [tax_year]\n");
+	printf("    list-calculations <tax_year> [calculation_type]\n");
 	printf("    view-end-of-year-estimate\n");
 	printf("    add-savings-account\n");
 	printf("    view-savings-accounts [tax_year]\n");
@@ -464,11 +453,15 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 	json_t *result;
 	json_t *obj;
 	char *jbuf;
+	const char *params[2];
 	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
 	int ret = -1;
 	int err;
 
-	err = mtd_ic_get_calculation(tax_year, cid, &jbuf);
+	params[0] = tax_year;
+	params[1] = cid;
+
+	err = mtd_ep(MTD_API_EP_ICAL_GET, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -526,18 +519,22 @@ static int get_calculation(const char *tax_year, const char *cid)
 {
 	json_t *result;
 	char *jbuf;
+	const char *params[2];
 	int ret = -1;
 	int err;
 	int fib_sleep = -1;
 
+	params[0] = tax_year;
+	params[1] = cid;
+
 again:
-	err = mtd_ic_get_calculation(tax_year, cid, &jbuf);
-	if ((err && err != -MTD_ERR_REQUEST) ||
-	    (err == -MTD_ERR_REQUEST && fib_sleep == 5)) {
+	err = mtd_ep(MTD_API_EP_ICAL_GET, NULL, &jbuf, params);
+	if ((err && err != MTD_ERR_REQUEST) ||
+	    (err == MTD_ERR_REQUEST && fib_sleep == 5)) {
 		printec("Couldn't get calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_free;
-	} else if (err == -MTD_ERR_REQUEST) {
+	} else if (err == MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep);
 		printic("Trying to get calculation again in "
 			"#BOLD#%d#RST# second(s)\n", fib_sleep);
@@ -567,7 +564,7 @@ static int final_declaration(int argc, char *argv[])
 	char *jbuf;
 	char *s;
 	const char *cid;
-	char tyear[TAX_YEAR_SZ + 1];
+	const char *params[3];
 	char submit[32];
 	int ret = -1;
 	int err;
@@ -577,10 +574,10 @@ static int final_declaration(int argc, char *argv[])
 		return -1;
 	}
 
-	snprintf(tyear, sizeof(tyear), "%s", argv[2]);
+	params[0] = argv[2];	/* taxYear */
+	params[1] = "intent-to-finalise";
 
-	err = mtd_ic_trigger_calculation(tyear, "?finalDeclaration=true",
-					 &jbuf);
+	err = mtd_ep(MTD_API_EP_ICAL_TRIGGER, NULL, &jbuf, params);
 	if (err) {
 		printec("Final declartion calculation failed. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -593,7 +590,7 @@ static int final_declaration(int argc, char *argv[])
 
 	printsc("Final declaration calculationId: #BOLD#%s#RST#\n", cid);
 
-	err = get_calculation(tyear, cid);
+	err = get_calculation(params[0], cid);
 	if (err)
 		goto out_free_json;
 
@@ -608,7 +605,7 @@ static int final_declaration(int argc, char *argv[])
 
 	printf("\n");
 	printic("About to submit a #TANG#Final Declaration#RST# for "
-		"#BOLD#%s#RST#\n\n", tyear);
+		"#BOLD#%s#RST#\n\n", params[0]);
 	printic("As a final check measure, just enter 'i agree' at the\n");
 	printic("prompt. Anything else will abandon the process.\n");
 	printf("\n");
@@ -620,7 +617,10 @@ static int final_declaration(int argc, char *argv[])
 
 	free(jbuf);
 
-	err = mtd_ic_final_decl(tyear, cid, &jbuf);
+	params[1] = cid;
+	params[2] = "final-declaration";
+
+	err = mtd_ep(MTD_API_EP_ICAL_FINAL_DECLARATION, NULL, &jbuf, params);
 	if (err) {
 		printec("Failed to submit 'Final Declaration'. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -648,6 +648,7 @@ static int get_eop_obligations(int argc, char *argv[])
 	json_t *period;
 	char qs[192];
 	char *jbuf;
+	const char *params[1];
 	size_t index;
 	int ret = -1;
 	int err;
@@ -667,7 +668,9 @@ static int get_eop_obligations(int argc, char *argv[])
 		snprintf(qs + len, sizeof(qs) - len, "&toDate=%s", argv[3]);
 	}
 
-	err = mtd_ob_list_end_of_period_obligations(qs, &jbuf);
+	params[0] = qs;
+
+	err = mtd_ep(MTD_API_EP_OB_GET_EPSO, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get End of Period Statement(s). (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -754,22 +757,20 @@ static int disp_annual_summary(json_t *root)
 	return 0;
 }
 
-static int trigger_calculation(const char *tax_year)
+static int trigger_calculation(const char *tax_year, const char *type)
 {
 	json_t *result;
 	json_t *cid_obj;
-	ac_jsonw_t *json;
 	char *jbuf;
 	const char *cid;
+	const char *params[2];
 	int ret = -1;
 	int err;
 
-	json = ac_jsonw_init();
+	params[0] = tax_year;
+	params[1] = type;
 
-	ac_jsonw_add_str(json, "taxYear", tax_year);
-	ac_jsonw_end(json);
-
-	err = mtd_ic_trigger_calculation(tax_year, NULL, &jbuf);
+	err = mtd_ep(MTD_API_EP_ICAL_TRIGGER, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't trigger calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -795,7 +796,6 @@ out_free_json:
 	json_decref(result);
 
 out_free:
-	ac_jsonw_free(json);
 	free(jbuf);
 
 	return ret;
@@ -821,11 +821,15 @@ static int annual_summary(const char *tax_year)
 	char *s;
 	char tpath[PATH_MAX];
 	char submit[3] = "\0";
+	const char *params[2];
 	int tmpfd;
 	int ret = -1;
 	int err;
 
-	err = mtd_sa_se_get_annual_summary(BUSINESS_ID, tax_year, &jbuf);
+	params[0] = BUSINESS_ID;
+	params[1] = tax_year;
+
+	err = mtd_ep(MTD_API_EP_SEB_SEAS_GET, NULL, &jbuf, params);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't get Annual Summary. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -868,8 +872,8 @@ again:
 		};
 
 		free(jbuf);
-		err = mtd_sa_se_update_annual_summary(&dsctx, BUSINESS_ID,
-						      tax_year, &jbuf);
+
+		err = mtd_ep(MTD_API_EP_SEB_SEAS_AMEND, &dsctx, &jbuf, params);
 		if (err) {
 			printec("Couldn't update Annual Summary. (%s)\n%s\n",
 				mtd_err2str(err), jbuf);
@@ -879,7 +883,7 @@ again:
 		printsc("Updated Annual Summary for #BOLD#%s#RST#\n",
 			tax_year);
 
-		err = trigger_calculation(tax_year);
+		err = trigger_calculation(tax_year, "intent-to-finalise");
 		if (err)
 			goto out_free_json;
 
@@ -937,27 +941,32 @@ static int update_annual_summary(int argc, char *argv[])
 	return annual_summary(argv[2]);
 }
 
-static int set_period(const char *start, const char *end, long income,
-		      long expenses, enum period_action action)
+static int set_period(const char *tax_year, const char *start, const char *end,
+		      long income, long expenses)
 {
 	ac_jsonw_t *json;
 	char *jbuf;
+	const char *params[2];
 	struct mtd_dsrc_ctx dsctx;
 	int err;
 	int ret = 0;
 
 	json = ac_jsonw_init();
 
-	ac_jsonw_add_str(json, "from", start);
-	ac_jsonw_add_str(json, "to", end);
-
-	ac_jsonw_add_object(json, "incomes");
-	ac_jsonw_add_object(json, "turnover");
-	ac_jsonw_add_real(json, "amount", income / 100.0f, 2);
-	ac_jsonw_end_object(json);
+	ac_jsonw_add_object(json, "periodDates");
+	ac_jsonw_add_str(json, "periodStartDate", start);
+	ac_jsonw_add_str(json, "periodEndDate", end);
 	ac_jsonw_end_object(json);
 
+	ac_jsonw_add_object(json, "periodIncome");
+	ac_jsonw_add_real(json, "turnover", income / 100.0f, 2);
+	ac_jsonw_add_real(json, "0ther", 0.0, 2);
+	ac_jsonw_add_real(json, "taxTakenOffTradingIncome", 0.0, 2);
+	ac_jsonw_end_object(json);
+
+	ac_jsonw_add_object(json, "periodExpenses");
 	ac_jsonw_add_real(json, "consolidatedExpenses", expenses / 100.0f, 2);
+	ac_jsonw_end_object(json);
 
 	ac_jsonw_end(json);
 
@@ -965,25 +974,18 @@ static int set_period(const char *start, const char *end, long income,
 	dsctx.data_len = -1;
 	dsctx.src_type = MTD_DATA_SRC_BUF;
 
-	if (action == PERIOD_CREATE) {
-		err = mtd_sa_se_create_period(&dsctx, BUSINESS_ID, &jbuf);
-	} else {
-		char period_id[32];
+	params[0] = BUSINESS_ID;
+	params[1] = tax_year;
 
-		snprintf(period_id, sizeof(period_id), "%s_%s", start, end);
-		err = mtd_sa_se_update_period(&dsctx, BUSINESS_ID, period_id,
-					      &jbuf);
-	}
+	err = mtd_ep(MTD_API_EP_SEB_SECPS_AMEND, &dsctx, &jbuf, params);
 	if (err) {
-		printec("Failed to %s period. (%s)\n%s\n",
-			action == PERIOD_CREATE ? "create" : "update",
+		printec("Failed to set period. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		ret = -1;
 	} else {
 		printf("\n");
-		printsc("%s period for #BOLD#%s#RST# to #BOLD#%s#RST#\n",
-		       action == PERIOD_CREATE ? "Created" : "Updated",
-		       start, end);
+		printsc("Set period for #BOLD#%s#RST# to #BOLD#%s#RST#\n",
+			start, end);
 	}
 
 	ac_jsonw_free(json);
@@ -998,16 +1000,18 @@ static int view_end_of_year_estimate(void)
 	json_t *obs;
 	char *jbuf;
 	const char *cid = NULL;
+	const char *params[2];
 	char tyear[TAX_YEAR_SZ + 1];
-	char qs[20] = "\0";
 	size_t nr_calcs;
 	int err;
 	int ret = -1;
 
 	get_tax_year(NULL, tyear);
 
-	snprintf(qs, sizeof(qs), "?taxYear=%s", tyear);
-	err = mtd_ic_list_calculations(qs, &jbuf);
+	params[0] = tyear;
+	params[1] = "?calculationType=intent-to-finalise";
+
+	err = mtd_ep(MTD_API_EP_ICAL_LIST, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1077,16 +1081,26 @@ static int list_calculations(int argc, char *argv[])
 	char *s;
 	char qs[20] = "\0";
 	char submit[4];
+	const char *params[2] = {};
 	size_t index;
 	ac_slist_t *calcs = NULL;
 	struct calc_id *cid;
 	int err;
 	int ret = -1;
 
-	if (argc == 3)
-		snprintf(qs, sizeof(qs), "?taxYear=%s", argv[2]);
+	if (argc < 3) {
+		disp_usage();
+		return ret;
+	}
 
-	err = mtd_ic_list_calculations(qs, &jbuf);
+	params[0] = argv[2];	/* taxYear */
+
+	if (argc == 4) {
+		snprintf(qs, sizeof(qs), "?calculationType=%s", argv[3]);
+		params[1] = qs;
+	}
+
+	err = mtd_ep(MTD_API_EP_ICAL_LIST, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1107,16 +1121,14 @@ static int list_calculations(int argc, char *argv[])
 		json_t *id_obj = json_object_get(calculation,
 						 "calculationId");
 		json_t *type = json_object_get(calculation, "calculationType");
-		json_t *tax_year = json_object_get(calculation, "taxYear");
 		const char *id = json_string_value(id_obj);
-		const char *tyear = json_string_value(tax_year);
 
 		printc("  #BOLD#%2zu#RST#%13s %39s %18s\n",
-		       index + 1, tyear, id, json_string_value(type));
+		       index + 1, params[0], id, json_string_value(type));
 
 		cid = malloc(sizeof(*cid));
 		cid->id = strdup(id);
-		cid->tax_year = strdup(tyear);
+		cid->tax_year = strdup(params[0]);
 		ac_slist_add(&calcs, cid);
         }
 
@@ -1142,14 +1154,13 @@ out_free_buf:
 	return ret;
 }
 
-static int __period_update(const char *start, const char *end,
-			   enum period_action action)
+static int __period_update(const char *tax_year, const char *start,
+			   const char *end)
 {
 	long income;
 	long expenses;
 	int err;
 	char *s;
-	char tyear[TAX_YEAR_SZ + 1];
 	char submit[3];
 
 	get_data(start, end, &income, &expenses);
@@ -1159,12 +1170,11 @@ static int __period_update(const char *start, const char *end,
         if (!s || (*submit != 'y' && *submit != 'Y'))
                 return 0;
 
-	err = set_period(start, end, income, expenses, action);
+	err = set_period(tax_year, start, end, income, expenses);
 	if (err)
 		return -1;
 
-	get_tax_year(start, tyear);
-	err = trigger_calculation(tyear);
+	err = trigger_calculation(tax_year, "in-year");
 	if (err)
 		return -1;
 
@@ -1177,17 +1187,17 @@ static int update_period(int argc, char *argv[])
 	char start[11];
 	char end[11];
 
-	if (argc != 3) {
+	if (argc != 4) {
 		disp_usage();
 		return -1;
 	}
 
-	memcpy(start, argv[2], 10);
+	memcpy(start, argv[3], 10);
 	start[10] = '\0';
-	memcpy(end, argv[2] + 11, 10);
+	memcpy(end, argv[3] + 11, 10);
 	end[10] = '\0';
 
-	err = __period_update(start, end, PERIOD_UPDATE);
+	err = __period_update(argv[2], start, end);
 	if (err)
 		return -1;
 
@@ -1202,12 +1212,14 @@ static int get_period(char **start, char **end)
 	size_t index;
 	char qs[128];
 	char *jbuf;
+	const char *params[1];
 	int err;
 	int ret = -1;
 
 	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
 		 BUSINESS_TYPE, BUSINESS_ID);
-	err = mtd_ob_list_inc_and_expend_obligations(qs, &jbuf);
+	params[0] = qs;
+	err = mtd_ep(MTD_API_EP_OB_GET_IEO, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1254,19 +1266,21 @@ static int create_period(int argc, char *argv[])
 	int ret = 0;
 	int err;
 
-	if (argc > 2 && argc < 4) {
+	if (argc != 3 && argc != 5) {
 		disp_usage();
 		return -1;
-	} else if (argc == 4) {
-		start = strdup(argv[2]);
-		end = strdup(argv[3]);
+	}
+
+	if (argc == 5) {
+		start = strdup(argv[3]);
+		end = strdup(argv[4]);
 	} else {
 		err = get_period(&start, &end);
 		if (err)
 			return -1;
 	}
 
-	err = __period_update(start, end, PERIOD_CREATE);
+	err = __period_update(argv[2], start, end);
 	if (err)
 		ret = -1;
 
@@ -1285,6 +1299,7 @@ static int list_periods(int argc, char *argv[])
 	int err;
 	size_t index;
 	char *jbuf;
+	const char *params[1];
 
 	if (argc > 2 && argc < 4) {
 		disp_usage();
@@ -1301,7 +1316,8 @@ static int list_periods(int argc, char *argv[])
 		snprintf(qs + len, sizeof(qs) - len, "&toDate=%s", argv[3]);
 	}
 
-	err = mtd_ob_list_inc_and_expend_obligations(qs, &jbuf);
+	params[0] = qs;
+	err = mtd_ep(MTD_API_EP_OB_GET_IEO, NULL, &jbuf, params);
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1391,7 +1407,7 @@ again:
 	dsctx.src_type = MTD_DATA_SRC_BUF;
 
 	ret = -1;
-	err = mtd_sa_sa_create_account(&dsctx, &jbuf);
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_ADD, &dsctx, &jbuf, NULL);
 	if (err) {
 		printec("Couldn't add savings account. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1417,11 +1433,12 @@ static int view_savings_accounts(int argc, char *argv[])
 	json_t *account;
 	char tyear[TAX_YEAR_SZ + 1];
 	char *jbuf;
+	const char *params[2] = {};
 	size_t index;
 	int err;
 	int ret = -1;
 
-	err = mtd_sa_sa_list_accounts(&jbuf);
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_LIST, NULL, &jbuf, params);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't get list of savings accounts. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
@@ -1429,12 +1446,14 @@ static int view_savings_accounts(int argc, char *argv[])
 		return -1;
 	}
 
+	printf("\n%s\n", jbuf);
+
 	if (argc < 3)
 		get_tax_year(NULL, tyear);
 	else
 		snprintf(tyear, sizeof(tyear), "%s", argv[2]);
 
-	printsc("Savings Accounts for #BOLD#%s#RST#\n", tyear);
+	printsc("UK Savings Accounts for #BOLD#%s#RST#\n", tyear);
 
 	printc("\n#CHARC#  %8s %26s#RST#\n", "id", "name");
 	printc("#CHARC#"
@@ -1447,15 +1466,16 @@ static int view_savings_accounts(int argc, char *argv[])
 	jbuf = NULL; /* avoid potential double free if no accounts */
 	json_array_foreach(obs, index, account) {
 		json_t *res;
-		json_t *id = json_object_get(account, "id");
+		json_t *said = json_object_get(account, "savingsAccountId");
 		json_t *name = json_object_get(account, "accountName");
 		json_t *taxed_amnt;
 		json_t *untaxed_amnt;
-		const char *said = json_string_value(id);
 		float taxed_int = -1.0;
 		float untaxed_int = -1.0;
 
-		err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
+		params[0] = tyear;
+		params[1] = json_string_value(said);
+		err = mtd_ep(MTD_API_EP_ISI_SI_UK_GET_AS, NULL, &jbuf, params);
 		if (err) {
 			printec("Couldn't retrieve account details. "
 				"(%s)\n%s\n", mtd_err2str(err), jbuf);
@@ -1472,7 +1492,9 @@ static int view_savings_accounts(int argc, char *argv[])
 			untaxed_int = json_real_value(untaxed_amnt);
 
 		printf("  %-25s %-34s\n",
-		       json_string_value(id), json_string_value(name));
+		       json_string_value(said),
+					json_string_value(name) ?
+					json_string_value(name) : "N/A");
 		if (taxed_int >= 0.0f)
 			printc("#CHARC#%25s#RST##BOLD#%12.2f#RST#\n",
 			       "taxedUkInterest : ", taxed_int);
@@ -1502,7 +1524,8 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	size_t index;
 	int err;
 
-	err = mtd_sa_sa_list_accounts(&jbuf);
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_LIST, NULL, &jbuf,
+		     (const char *[1]){});
 	if (err) {
 		printec("Couldn't get list of savings accounts. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1518,13 +1541,13 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	       " ------------------------------------------------------------"
 	       "---#RST#\n");
 	json_array_foreach(obs, index, account) {
-		json_t *id = json_object_get(account, "id");
+		json_t *said = json_object_get(account, "savingsAccountId");
 		json_t *name = json_object_get(account, "accountName");
 
 		printf("  %2zu    %-22s %s\n", index + 1,
-		       json_string_value(id), json_string_value(name));
+		       json_string_value(said), json_string_value(name));
 
-		ac_slist_add(accounts, strdup(json_string_value(id)));
+		ac_slist_add(accounts, strdup(json_string_value(said)));
         }
 
 	json_decref(result);
@@ -1545,9 +1568,8 @@ static int amend_savings_account(int argc, char *argv[])
 	char *s;
 	char submit[3];
 	char tpath[PATH_MAX];
-	const char *tyear;
-	const char *said;
 	const char *args[3] = {};
+	const char *params[2];
 	int child_pid;
 	int status;
 	int tmpfd;
@@ -1559,8 +1581,6 @@ static int amend_savings_account(int argc, char *argv[])
 		return -1;
 	}
 
-	tyear = argv[2];
-
 	get_savings_accounts_list(&accounts);
 	printf("\n");
 	printcc("Select account to edit (n) or quit (Q)> ");
@@ -1568,12 +1588,14 @@ static int amend_savings_account(int argc, char *argv[])
 	if (!s || *submit < '1' || *submit > '9')
 		goto out_free_list;
 
-	said = ac_slist_nth_data(accounts, atoi(submit) - 1);
-	if (!said) {
+	params[0] = argv[2];	/* taxYear */
+	params[1] = ac_slist_nth_data(accounts, atoi(submit) - 1); /* said */
+	if (!params[1]) {
 		printec("No such account index\n");
 		goto out_free_list;
 	}
-	err = mtd_sa_sa_get_annual_summary(said, tyear, &jbuf);
+
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_GET_AS, NULL, &jbuf, params);
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't retrieve account details. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
@@ -1616,15 +1638,15 @@ static int amend_savings_account(int argc, char *argv[])
 	dsctx.src_type = MTD_DATA_SRC_FD;
 
 	free(jbuf);
-	err = mtd_sa_sa_update_annual_summary(&dsctx, said, tyear, &jbuf);
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_UPDATE_AS, &dsctx, &jbuf, params);
 	if (err) {
 		printec("Couldn't update Savings Account. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
 		goto out_close_tmpfd;
 	}
 
-	printsc("Updated Savings Account #BOLD#%s#RST#\n", said);
-	args[2] = tyear;
+	printsc("Updated Savings Account #BOLD#%s#RST#\n", params[1]);
+	args[2] = params[0];
 	view_savings_accounts(3, (char **)args);
 
 	ret = 0;
@@ -1727,7 +1749,7 @@ static int set_business(void)
 	int ret = -1;
 
 	printf("\nLooking up business(es)...\n");
-	err = mtd_bd_list(&jbuf);
+	err = mtd_ep(MTD_API_EP_BD_LIST, NULL, &jbuf, NULL);
 	if (err) {
 		printec("set_business: Couldn't get list of employments. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
@@ -1811,7 +1833,7 @@ static int init_auth(void)
 {
 	int err;
 
-	err = mtd_init_auth(MTD_EP_API_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
+	err = mtd_init_auth(MTD_API_SCOPE_ITSA, MTD_SCOPE_RD_SA|MTD_SCOPE_WR_SA);
 	if (err)
 		printec("mtd_init_auth: %s\n", mtd_err2str(err));
 
@@ -1846,7 +1868,7 @@ static int do_init_all(const struct mtd_cfg *cfg)
 	}
 
 	printf("Initialising...\n\n");
-	err = mtd_init_creds(MTD_EP_API_ITSA);
+	err = mtd_init_creds(MTD_API_SCOPE_ITSA);
 	if (err) {
 		printec("mtd_init_creds: %s\n", mtd_err2str(err));
 		return err;

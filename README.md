@@ -21,7 +21,7 @@ procedure by signing up to the
 and registering this application and then applying for production credentials.
 
 Feel free to
-[email](mailto:Andrew%20Clayton%20%3candrew%40digital-domain.net%3e?subject=%5bitsa%20registration%5d%20)
+[email](mailto:Andrew Clayton <andrew@sigsegv.uk>)
 me with any questions regarding this particular bit. General questions/issues
 should be done through the GitHub [itsa](https://github.com/ac000/itsa)
 project.
@@ -32,7 +32,6 @@ itsa currently supports the following actions
   - Create and update Self-Employment periods
   - Create/Update a Self-Employment annual summary
   - Submit an End-of-Year Statement
-  - Submit a final declaration
   - List/view tax calculations
   - View an End-of-Year tax/nics estimate
   - Add/view/amend savings accounts
@@ -45,8 +44,6 @@ file.
 itsa is primarily developed under Linux but it also builds and runs under
 FreeBSD.
 
-### Linux
-
 itsa has a few dependencies
 
   - [libmtdac](https://github.com/ac000/libmtdac)
@@ -57,7 +54,12 @@ itsa has a few dependencies
 
 the last two should already be packaged up for your system.
 
-On Red Hat/Fedora/etc libcurl and jansson can be obtained with
+**NOTE:** This requires jansson 2.14.1 or later with DTOA support (the
+default) for the proper handling of real numbers.
+
+### Linux
+
+On Red Hat/Fedora/etc
 
 ```
 $ sudo dnf install libcurl{,-devel} jansson{,-devel} sqlite{,-devel}
@@ -177,13 +179,12 @@ Commands
     switch-business
 
     list-periods [<start> <end>]
-    create-period [<start> <end>]
-    update-period <period_id>
+    create-period <tax_year> [<start> <end>]
+    update-period <tax_year> <period_id>
     update-annual-summary <tax_year>
     get-end-of-period-statement-obligations [<start> <end>]
-    submit-end-of-period-statement <start> <end>
     submit-final-declaration <tax_year>
-    list-calculations [tax_year]
+    list-calculations <tax_year> [calculation_type]
     view-end-of-year-estimate
     add-savings-account
     view-savings-accounts [tax_year]
