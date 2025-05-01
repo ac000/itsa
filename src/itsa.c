@@ -714,64 +714,6 @@ out_free:
 	return ret;
 }
 
-static int biss_se_summary(const char *tax_year)
-{
-	json_t *result;
-	json_t *obj;
-	json_t *val;
-	char *jbuf;
-	const char *key;
-	char *plcolor = "#GREEN#";
-	char *pltext = "Profit";
-	int ret = -1;
-	int err;
-
-	err = mtd_biss_get_summary("self-employment", tax_year, BUSINESS_ID,
-				   &jbuf);
-	if (err) {
-		printec("Couldn't get BISS Self-Employment Annual Summary. "
-			"(%s)\n%s\n", mtd_err2str(err), jbuf);
-		goto out_free;
-	}
-
-	printsc("BISS Self-Employment Annual Summary for #BOLD#%s#RST# "
-		"#CHARC#/#RST# #BOLD#%s#RST#\n", BUSINESS_ID, tax_year);
-
-	result = get_result_json(jbuf);
-
-	printc("#BOLD# Total#RST#:-\n");
-	obj = json_object_get(result, "total");
-	json_object_foreach(obj, key, val)
-		printc("#CHARC#%23s :#RST# %.2f\n", key,
-		       json_number_value(val));
-
-	printf("\n");
-	obj = json_object_get(result, "accountingAdjustments");
-	printc("#CHARC#%23s :#RST# %.2f\n", "accountingAdjustments",
-	       json_number_value(obj));
-
-	printf("\n");
-	obj = json_object_get(result, "profit");
-	if (!obj) {
-		obj = json_object_get(result, "loss");
-		plcolor = "#RED#";
-		pltext = "Loss";
-	}
-	printc("%s %s#RST#:-\n", plcolor, pltext);
-	json_object_foreach(obj, key, val)
-		printc("#CHARC#%23s :#RST# %.2f\n", key,
-		       json_number_value(val));
-
-	json_decref(result);
-
-	ret = 0;
-
-out_free:
-	free(jbuf);
-
-	return ret;
-}
-
 static const struct {
 	const char *exempt_code;
 	const char *desc;
