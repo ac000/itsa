@@ -251,6 +251,15 @@ environment variable is set then it won't.
 
 It can be set to either *yes/true* or *no/false*
 
+### ITSA_GOV_TEST_SCENARIO
+
+This can be used to pass Gov-Test-Scenario headers to API calls for testing,
+e.g.
+
+```
+$ ITSA_GOV_TEST_SCENARIO="Gov-Test-Scenario: STATEFUL" ./itsa ...
+```
+
 # License
 
 itsa is licensed under the GNU General Public License (GPL) version 2

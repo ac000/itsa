@@ -2063,6 +2063,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	extra_hdrs[0] = getenv("ITSA_GOV_TEST_SCENARIO");
+
 	set_colors();
 
 	if (!IS_CMD("init")) {
