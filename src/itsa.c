@@ -69,15 +69,6 @@ INFO "prosecution if I give false information.\n"\
 INFO "By saying yes (y) below, you are declaring that you agree with\n"\
 INFO "the above and wish to proceed with final crystallisation.\n"
 
-#define EOP_DECLARATION \
-INFO "I confirm that I have reviewed the information provided to establish\n"\
-INFO "the taxable profits for the relevant period ending in %s together\n"\
-INFO "with the designatory data provided for that period and that it is\n"\
-INFO "correct and complete to the best of my knowledge. I understand that I\n"\
-INFO "may have to pay financial penalties or face prosecution if I give false"\
-"\n"\
-INFO "information.\n"
-
 enum period_action {
 	PERIOD_CREATE,
 	PERIOD_UPDATE,
@@ -113,7 +104,6 @@ static void disp_usage(void)
 	printf("    update-period <period_id>\n");
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
-	printf("    submit-end-of-period-statement <start> <end>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations [tax_year]\n");
 	printf("    view-end-of-year-estimate\n");
@@ -651,59 +641,6 @@ out_free_buf:
 	return ret;
 }
 
-static int submit_eop_obligation(const char *start, const char *end)
-{
-	ac_jsonw_t *json;
-	struct mtd_dsrc_ctx dsctx;
-	char *jbuf;
-	char *s;
-	char submit[3];
-	int ret = -1;
-	int err;
-
-	printcc("Submit End of Period Statement for #BOLD#%s#RST# to "
-		"#BOLD#%s#RST#\n\n", start, end);
-	printcc("(y/N)> ");
-
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || (*submit != 'y' && *submit != 'Y'))
-		return 0;
-
-	json = ac_jsonw_init();
-	ac_jsonw_add_str(json, "typeOfBusiness", BUSINESS_TYPE);
-	ac_jsonw_add_str(json, "businessId", BUSINESS_ID);
-
-	ac_jsonw_add_object(json, "accountingPeriod");
-	ac_jsonw_add_str(json, "startDate", start);
-	ac_jsonw_add_str(json, "endDate", end);
-	ac_jsonw_end_object(json);
-
-	ac_jsonw_add_bool(json, "finalised", true);
-	ac_jsonw_end(json);
-
-	dsctx.data_src.buf = ac_jsonw_get(json);
-	dsctx.data_len = -1;
-	dsctx.src_type = MTD_DATA_SRC_BUF;
-
-	err = mtd_ibeops_submit_eops(&dsctx, &jbuf);
-	if (err) {
-		printec("Couldn't submit End of Period Statement. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		goto out_free;
-	}
-
-	printsc("End of Period Statement submitted for #BOLD#%s#RST# to "
-		"#BOLD#%s#RST#\n", start, end);
-
-	ret = 0;
-
-out_free:
-	ac_jsonw_free(json);
-	free(jbuf);
-
-	return ret;
-}
-
 static int get_eop_obligations(int argc, char *argv[])
 {
 	json_t *result;
@@ -1046,49 +983,6 @@ out_free:
 	free(jbuf);
 
 	return ret;
-}
-
-static int submit_eop_statement(int argc, char *argv[])
-{
-	char *start;
-	char *end;
-	char *s;
-	char submit[3];
-	char tax_year[TAX_YEAR_SZ + 1];
-	int err;
-
-	if (argc < 4) {
-		disp_usage();
-		return -1;
-	}
-
-	start = argv[2];
-	end = argv[3];
-
-	memcpy(tax_year, start, 4);
-	memcpy(tax_year + 4, "-", 2);
-	memcpy(tax_year + 5, end + 2, 2);
-	tax_year[TAX_YEAR_SZ] = '\0';
-
-	err = annual_summary(tax_year);
-	if (err)
-		return -1;
-
-	err = biss_se_summary(tax_year);
-	if (err)
-		return -1;
-
-	printc("\n" EOP_DECLARATION "\n", tax_year);
-	printcc("(y/N)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || (*submit != 'y' && *submit != 'Y'))
-		return 0;
-
-	err = submit_eop_obligation(start, end);
-	if (err)
-		return -1;
-
-	return 0;
 }
 
 static int update_annual_summary(int argc, char *argv[])
@@ -2185,8 +2079,6 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return update_period(argc, argv);
 	if (IS_CMD("update-annual-summary"))
 		return update_annual_summary(argc, argv);
-	if (IS_CMD("submit-end-of-period-statement"))
-		return submit_eop_statement(argc, argv);
 	if (IS_CMD("get-end-of-period-statement-obligations"))
 		return get_eop_obligations(argc, argv);
 	if (IS_CMD("submit-final-declaration"))
