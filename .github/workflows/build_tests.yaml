@@ -18,34 +18,6 @@ jobs:
   # GitHub Currently only supports running directly on Ubuntu,
   # for any other Linux we need to use a container.
 
-  # CentOS 7 / glibc 2.17 / gcc 4.8.5
-  centos_7:
-    runs-on: ubuntu-latest
-
-    container:
-      image: centos:7
-
-    steps:
-      - name: Install tools/deps
-        run: |
-          yum -y install git gcc make jansson-devel libcurl-devel sqlite-devel
-          git clone https://github.com/ac000/libmtdac.git ${RUNNER_TEMP}/libmtdac
-          cd ${RUNNER_TEMP}/libmtdac/src
-          make
-          cd -
-          git clone https://github.com/ac000/libac.git ${RUNNER_TEMP}/libac
-          cd ${RUNNER_TEMP}/libac/src
-          make
-          export LD_LIBRARY_PATH="${RUNNER_TEMP}/libmtdac/src:${RUNNER_TEMP}/libac/src"
-
-      - uses: actions/checkout@v2
-
-      - name: make
-        # Fudge the version seeing as we don't actually have a git
-        # repository here due to needing git 2.18+. The version
-        # number is not actually important to just test the build.
-        run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make GIT_VERSION=\\\"v0.0.0\\\" V=1
-
   # Rocky Linux 8 (RHEL clone) / glibc 2.28 / gcc 8.5.0
   rocky-linux-8:
     runs-on: ubuntu-latest
@@ -75,12 +47,12 @@ jobs:
           git config --global --add safe.directory /__w/itsa/itsa
           CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
-  # Debian 11 / glibc 2.31 / gcc 10.2
-  debian_11:
+  # Debian 12 / glibc 2.36 / gcc 12
+  debian_12:
     runs-on: ubuntu-latest
 
     container:
-      image: debian:11
+      image: debian:12
 
     steps:
       - name: Install deps
@@ -105,48 +77,51 @@ jobs:
           git config --global --add safe.directory /__w/itsa/itsa
           CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
 
-  # Alpine Linux with musl libc and GCC
+  # Alpine Linux with musl libc and GCC & Clang
   alpine:
     runs-on: ubuntu-latest
 
     container:
       image: alpine:edge
 
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [ 'gcc', 'clang' ]
+
     steps:
       - name: Install tools/deps
         run: |
-          apk add build-base linux-headers git jansson-dev curl-dev sqlite-dev
+          apk add build-base ${{ matrix.compiler }} linux-headers git jansson-dev curl-dev sqlite-dev
           git clone https://github.com/ac000/libmtdac.git ${RUNNER_TEMP}/libmtdac
           cd ${RUNNER_TEMP}/libmtdac/src
-          make
+          make CC=${{ matrix.compiler }}
           cd -
           git clone https://github.com/ac000/libac.git ${RUNNER_TEMP}/libac
           cd ${RUNNER_TEMP}/libac/src
-          make
+          make CC=${{ matrix.compiler }}
           export LD_LIBRARY_PATH="${RUNNER_TEMP}/libmtdac/src:${RUNNER_TEMP}/libac/src"
 
       - uses: actions/checkout@v2
         with:
           fetch-depth: "0"
 
-      - name: make
+      - name: make CC=${{ matrix.compiler }}
         run: |
           git config --global --add safe.directory /__w/itsa/itsa
-          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make V=1
+          CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include -Werror" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make CC=${{ matrix.compiler }} V=1
 
-  # Fedora 37 / glibc 2.36 / gcc 12.1 / clang 15
-  # Fedora 38 / glibc 2.37 / gcc 13.1 / clang 16
+  # Fedora 42 / glibc 2.41 / gcc 15 / clang 20
   fedora:
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'fedora:37', 'fedora:38' ]
         compiler: [ 'gcc', 'clang' ]
 
     container:
-      image: ${{ matrix.os }}
+      image: fedora:latest
 
     steps:
       - name: Install tools/deps
