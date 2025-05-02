@@ -109,6 +109,12 @@ static void free_config(void)
 	free((void *)itsa_config.btype);
 }
 
+#define __cleanup_free	__attribute__((cleanup(xfree)))
+static inline void xfree(char **p)
+{
+	free(*p);
+}
+
 /*
  * Simple wrapper around time(2) that allows to override the
  * current date.
@@ -452,10 +458,9 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 {
 	json_t *result;
 	json_t *obj;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[2];
 	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
-	int ret = -1;
 	int err;
 
 	params[0] = tax_year;
@@ -465,7 +470,7 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 	if (err) {
 		printec("Couldn't get calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_buf;
+		return -1;
 	}
 
 	printsc("End of Year estimate for #BOLD#%s#RST#\n", cid);
@@ -480,12 +485,7 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 
 	json_decref(result);
 
-	ret = 0;
-
-out_free_buf:
-	free(jbuf);
-
-	return ret;
+	return 0;
 }
 
 static void display_calculation_messages(const json_t *msgs)
@@ -518,9 +518,8 @@ static void display_calculation(json_t *obj)
 static int get_calculation(const char *tax_year, const char *cid)
 {
 	json_t *result;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[2];
-	int ret = -1;
 	int err;
 	int fib_sleep = -1;
 
@@ -533,7 +532,7 @@ again:
 	    (err == MTD_ERR_REQUEST && fib_sleep == 5)) {
 		printec("Couldn't get calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		return -1;
 	} else if (err == MTD_ERR_REQUEST) {
 		fib_sleep = next_fib(fib_sleep);
 		printic("Trying to get calculation again in "
@@ -549,19 +548,14 @@ again:
 	display_calculation(result);
 	json_decref(result);
 
-	ret = 0;
-
-out_free:
-	free(jbuf);
-
-	return ret;
+	return 0;
 }
 
 static int final_declaration(int argc, char *argv[])
 {
 	json_t *result;
 	json_t *cid_obj;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char *s;
 	const char *cid;
 	const char *params[3];
@@ -581,7 +575,7 @@ static int final_declaration(int argc, char *argv[])
 	if (err) {
 		printec("Final declartion calculation failed. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_buf;
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
@@ -635,9 +629,6 @@ out_ok:
 out_free_json:
 	json_decref(result);
 
-out_free_buf:
-	free(jbuf);
-
 	return ret;
 }
 
@@ -647,10 +638,9 @@ static int get_eop_obligations(int argc, char *argv[])
 	json_t *obs;
 	json_t *period;
 	char qs[192];
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[1];
 	size_t index;
-	int ret = -1;
 	int err;
 
 	if (argc > 2 && argc < 4) {
@@ -674,7 +664,7 @@ static int get_eop_obligations(int argc, char *argv[])
 	if (err) {
 		printec("Couldn't get End of Period Statement(s). (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		return -1;
 	}
 
 	printsc("End of Period Statement Obligations\n");
@@ -709,12 +699,7 @@ static int get_eop_obligations(int argc, char *argv[])
 
 	json_decref(result);
 
-	ret = 0;
-
-out_free:
-	free(jbuf);
-
-	return ret;
+	return 0;
 }
 
 static const struct {
@@ -761,7 +746,7 @@ static int trigger_calculation(const char *tax_year, const char *type)
 {
 	json_t *result;
 	json_t *cid_obj;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *cid;
 	const char *params[2];
 	int ret = -1;
@@ -774,7 +759,7 @@ static int trigger_calculation(const char *tax_year, const char *type)
 	if (err) {
 		printec("Couldn't trigger calculation. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		return -1;
 	}
 
 	printsc("Triggered calculation for #BOLD#%s#RST#\n", tax_year);
@@ -795,9 +780,6 @@ static int trigger_calculation(const char *tax_year, const char *type)
 out_free_json:
 	json_decref(result);
 
-out_free:
-	free(jbuf);
-
 	return ret;
 }
 
@@ -817,7 +799,7 @@ extern char **environ;
 static int annual_summary(const char *tax_year)
 {
 	json_t *result;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char *s;
 	char tpath[PATH_MAX];
 	char submit[3] = "\0";
@@ -833,7 +815,7 @@ static int annual_summary(const char *tax_year)
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't get Annual Summary. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free;
+		return -1;
 	}
 
 	printsc("Annual Summary for #BOLD#%s#RST#\n", tax_year);
@@ -844,7 +826,7 @@ static int annual_summary(const char *tax_year)
 	if (tmpfd == -1) {
 		printec("Couldn't open %s in %s\n", tpath, __func__);
 		perror("open");
-		goto out_free;
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
@@ -925,9 +907,6 @@ out_free_json:
 	close(tmpfd);
 	unlink(tpath);
 
-out_free:
-	free(jbuf);
-
 	return ret;
 }
 
@@ -945,7 +924,7 @@ static int set_period(const char *tax_year, const char *start, const char *end,
 		      long income, long expenses)
 {
 	ac_jsonw_t *json;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[2];
 	struct mtd_dsrc_ctx dsctx;
 	int err;
@@ -989,7 +968,6 @@ static int set_period(const char *tax_year, const char *start, const char *end,
 	}
 
 	ac_jsonw_free(json);
-	free(jbuf);
 
 	return ret;
 }
@@ -998,7 +976,7 @@ static int view_end_of_year_estimate(void)
 {
 	json_t *result;
 	json_t *obs;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *cid = NULL;
 	const char *params[2];
 	char tyear[TAX_YEAR_SZ + 1];
@@ -1015,7 +993,7 @@ static int view_end_of_year_estimate(void)
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_buf;
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
@@ -1049,9 +1027,6 @@ static int view_end_of_year_estimate(void)
 out_free_json:
 	json_decref(result);
 
-out_free_buf:
-	free(jbuf);
-
 	return ret;
 }
 
@@ -1077,7 +1052,7 @@ static int list_calculations(int argc, char *argv[])
 	json_t *result;
 	json_t *obs;
 	json_t *calculation;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char *s;
 	char qs[20] = "\0";
 	char submit[4];
@@ -1104,7 +1079,7 @@ static int list_calculations(int argc, char *argv[])
 	if (err) {
 		printec("Couldn't get calculations list. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_buf;
+		return -1;
 	}
 
 	printsc("Got list of calculations\n");
@@ -1147,9 +1122,6 @@ out_free_json:
 	json_decref(result);
 
 	ret = 0;
-
-out_free_buf:
-	free(jbuf);
 
 	return ret;
 }
@@ -1211,7 +1183,7 @@ static int get_period(char **start, char **end)
 	json_t *period;
 	size_t index;
 	char qs[128];
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[1];
 	int err;
 	int ret = -1;
@@ -1223,7 +1195,7 @@ static int get_period(char **start, char **end)
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_jbuf;
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
@@ -1252,9 +1224,6 @@ static int get_period(char **start, char **end)
 
 out_free_json:
 	json_decref(result);
-
-out_free_jbuf:
-	free(jbuf);
 
 	return ret;
 }
@@ -1298,7 +1267,7 @@ static int list_periods(int argc, char *argv[])
 	char qs[192];
 	int err;
 	size_t index;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[1];
 
 	if (argc > 2 && argc < 4) {
@@ -1321,14 +1290,13 @@ static int list_periods(int argc, char *argv[])
 	if (err) {
 		printec("Couldn't get list of obligations. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		free(jbuf);
 		return -1;
 	}
 
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "obligations");
 	if (!obs)
-		goto out_free;
+		goto out_free_json;
 	obs = json_array_get(obs, 0);
 	obs = json_object_get(obs, "obligationDetails");
 
@@ -1353,9 +1321,8 @@ static int list_periods(int argc, char *argv[])
 		       "#RST#", rec_obj ? STRUE : SFALSE);
         }
 
-out_free:
+out_free_json:
 	json_decref(result);
-	free(jbuf);
 
 	return 0;
 }
@@ -1365,7 +1332,7 @@ out_free:
 	"^[" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "]{1,32}$"
 static int add_savings_account(void)
 {
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char *s;
 	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
 	ac_jsonw_t *json;
@@ -1421,7 +1388,6 @@ again:
 out_free:
 	regfree(&re);
 	ac_jsonw_free(json);
-	free(jbuf);
 
 	return ret;
 }
@@ -1432,7 +1398,7 @@ static int view_savings_accounts(int argc, char *argv[])
 	json_t *obs;
 	json_t *account;
 	char tyear[TAX_YEAR_SZ + 1];
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	const char *params[2] = {};
 	size_t index;
 	int err;
@@ -1442,7 +1408,6 @@ static int view_savings_accounts(int argc, char *argv[])
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't get list of savings accounts. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
-		free(jbuf);
 		return -1;
 	}
 
@@ -1479,8 +1444,7 @@ static int view_savings_accounts(int argc, char *argv[])
 		if (err) {
 			printec("Couldn't retrieve account details. "
 				"(%s)\n%s\n", mtd_err2str(err), jbuf);
-			free(jbuf);
-			goto out_free;
+			goto out_free_json;
 		}
 		res = get_result_json(jbuf);
 		taxed_amnt = json_object_get(res, "taxedUkInterest");
@@ -1504,12 +1468,12 @@ static int view_savings_accounts(int argc, char *argv[])
 		printf("\n");
 
 		json_decref(res);
-		free(jbuf);
+		free(jbuf), jbuf = NULL;
         }
 
 	ret = 0;
 
-out_free:
+out_free_json:
 	json_decref(result);
 
 	return ret;
@@ -1520,7 +1484,7 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	json_t *result;
 	json_t *obs;
 	json_t *account;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	size_t index;
 	int err;
 
@@ -1529,7 +1493,6 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	if (err) {
 		printec("Couldn't get list of savings accounts. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		free(jbuf);
 		return -1;
 	}
 
@@ -1551,7 +1514,6 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
         }
 
 	json_decref(result);
-	free(jbuf);
 
 	return 0;
 }
@@ -1564,7 +1526,7 @@ static int amend_savings_account(int argc, char *argv[])
 	json_t *taxed_int;
 	json_t *untaxed_int;
 	json_t *amnt = json_real(0.0f);
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char *s;
 	char submit[3];
 	char tpath[PATH_MAX];
@@ -1599,11 +1561,11 @@ static int amend_savings_account(int argc, char *argv[])
 	if (err && mtd_http_status_code(jbuf) != MTD_HTTP_NOT_FOUND) {
 		printec("Couldn't retrieve account details. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
-		goto out_free_jbuf;
+		goto out_free_list;
 	}
 	if (mtd_http_status_code(jbuf) == MTD_HTTP_NOT_FOUND) {
 		printec("No such Savings Account\n");
-		goto out_free_jbuf;
+		goto out_free_list;
 	}
 
 	result = get_result_json(jbuf);
@@ -1622,7 +1584,7 @@ static int amend_savings_account(int argc, char *argv[])
 	if (tmpfd == -1) {
 		printec("Couldn't open %s in %s\n", tpath, __func__);
 		perror("open");
-		goto out_free_jbuf;
+		goto out_free_list;
 	}
 
 	json_dumpfd(result, tmpfd, JSON_INDENT(4));
@@ -1656,9 +1618,6 @@ out_close_tmpfd:
 	unlink(tpath);
 
 	json_decref(result);
-
-out_free_jbuf:
-	free(jbuf);
 
 out_free_list:
 	ac_slist_destroy(&accounts, free);
@@ -1740,27 +1699,26 @@ static int set_business(void)
 	json_error_t error;
 	json_t *ba;
 	size_t idx;
-	char *jbuf;
+	char *jbuf __cleanup_free;
 	char path[PATH_MAX];
 	char *s;
 	char submit[PATH_MAX];
 	int def_bus = 0;
 	int err;
-	int ret = -1;
 
 	printf("\nLooking up business(es)...\n");
 	err = mtd_ep(MTD_API_EP_BD_LIST, NULL, &jbuf, NULL);
 	if (err) {
 		printec("set_business: Couldn't get list of employments. "
 			"(%s)\n%s\n", mtd_err2str(err), jbuf);
-		goto out_free;
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
 	lob = json_object_get(result, "listOfBusinesses");
 	if (json_array_size(lob) == 0) {
 		printec("set_business: No business(es) found.\n");
-		goto out_free;
+		return -1;
 	}
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
@@ -1768,7 +1726,7 @@ static int set_business(void)
 	if (!config) {
 		printec("set_business: Couldn't open %s: %s\n",
 			path, error.text);
-		goto out_free;
+		return -1;
 	}
 
 	ba = json_array();
@@ -1820,13 +1778,9 @@ again:
 	json_decref(ba);
 	json_decref(config);
 
-	ret = 0;
-
-out_free:
-	free(jbuf);
 	json_decref(result);
 
-	return ret;
+	return 0;
 }
 
 static int init_auth(void)
