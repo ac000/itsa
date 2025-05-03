@@ -49,7 +49,7 @@ jobs:
           cd $GITHUB_WORKSPACE
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: +security-and-quality
@@ -58,6 +58,6 @@ jobs:
         run: CFLAGS="-I${RUNNER_TEMP}/libmtdac/include -I${RUNNER_TEMP}/libac/src/include" LDFLAGS="-L${RUNNER_TEMP}/libmtdac/src -L${RUNNER_TEMP}/libac/src" make -C src/
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
