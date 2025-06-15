@@ -939,7 +939,7 @@ static int set_period(const char *tax_year, const char *start, const char *end,
 
 	ac_jsonw_add_object(json, "periodIncome");
 	ac_jsonw_add_real(json, "turnover", income / 100.0f, 2);
-	ac_jsonw_add_real(json, "0ther", 0.0, 2);
+	ac_jsonw_add_real(json, "other", 0.0, 2);
 	ac_jsonw_add_real(json, "taxTakenOffTradingIncome", 0.0, 2);
 	ac_jsonw_end_object(json);
 
