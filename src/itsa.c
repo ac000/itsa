@@ -2017,6 +2017,31 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 	return -1;
 }
 
+static const FILE *set_log_fp(const char *log_level)
+{
+	char *ptr;
+	char *ptrm;
+	const char *mode = "we";
+
+	if (!log_level || !strchr(log_level, ':'))
+		return NULL;
+
+	ptr = strchr(log_level, ':');
+	ptr++;
+
+	ptrm = strchr(log_level, '+');
+	if (!ptrm)
+		goto out;
+
+	*(ptrm++) = '\0';
+
+	if (*ptrm != '\0' && *ptrm == 'a')
+		mode = "ae";
+
+out:
+	return fopen(ptr, mode);
+}
+
 int main(int argc, char *argv[])
 {
 	int err;
@@ -2031,7 +2056,8 @@ int main(int argc, char *argv[])
 	const struct mtd_cfg cfg = {
 		.fph_ops = &fph_ops,
 		.extra_hdrs = extra_hdrs,
-		.config_dir = get_conf_dir(config_dir)
+		.config_dir = get_conf_dir(config_dir),
+		.log_fp = set_log_fp(log_level)
 	};
 
 	if (argc < 2) {
