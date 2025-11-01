@@ -6,7 +6,7 @@ freebsd_instance:
 task:
   name: freebsd_(clang)
   skip: "!changesInclude('.cirrus.yml', 'Makefile', 'src/**')"
-  install_script: pkg install -y git gmake jansson curl e2fsprogs-libuuid
+  install_script: pkg install -y git gmake jansson curl libuuid
   clone_script: |
     if [ -z "$CIRRUS_PR" ]; then
       git clone https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
