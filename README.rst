@@ -199,7 +199,6 @@ itsa currently supports the following commands
        create-period <tax_year> [<start> <end>]
        update-period <tax_year> <period_id>
        update-annual-summary <tax_year>
-       get-end-of-period-statement-obligations [<start> <end>]
        submit-final-declaration <tax_year>
        list-calculations <tax_year> [calculation_type]
        view-end-of-year-estimate
