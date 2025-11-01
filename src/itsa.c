@@ -92,7 +92,6 @@ static void disp_usage(void)
 	printf("    create-period <tax_year> [<start> <end>]\n");
 	printf("    update-period <tax_year> <period_id>\n");
 	printf("    update-annual-summary <tax_year>\n");
-	printf("    get-end-of-period-statement-obligations [<start> <end>]\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
 	printf("    view-end-of-year-estimate\n");
@@ -630,76 +629,6 @@ out_free_json:
 	json_decref(result);
 
 	return ret;
-}
-
-static int get_eop_obligations(int argc, char *argv[])
-{
-	json_t *result;
-	json_t *obs;
-	json_t *period;
-	char qs[192];
-	char *jbuf __cleanup_free;
-	const char *params[1];
-	size_t index;
-	int err;
-
-	if (argc > 2 && argc < 4) {
-		disp_usage();
-		return -1;
-	}
-
-	snprintf(qs, sizeof(qs), "?typeOfBusiness=%s&businessId=%s",
-		 BUSINESS_TYPE, BUSINESS_ID);
-	if (argc > 2) {
-		int len = strlen(qs);
-
-		len += snprintf(qs + len, sizeof(qs) - len, "&fromDate=%s",
-				argv[2]);
-		snprintf(qs + len, sizeof(qs) - len, "&toDate=%s", argv[3]);
-	}
-
-	params[0] = qs;
-
-	err = mtd_ep(MTD_API_EP_OB_GET_EPSO, NULL, &jbuf, params);
-	if (err) {
-		printec("Couldn't get End of Period Statement(s). (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		return -1;
-	}
-
-	printsc("End of Period Statement Obligations\n");
-
-	result = get_result_json(jbuf);
-	obs = json_object_get(result, "obligations");
-	obs = json_array_get(obs, 0);
-	obs = json_object_get(obs, "obligationDetails");
-
-	printc("#CHARC#  %12s %11s %13s %15s %7s#RST#\n",
-	       "start", "end", "due", "status", "@" );
-	printc("#CHARC#"
-	       " ------------------------------------------------------------"
-	       "---------#RST#\n");
-	json_array_foreach(obs, index, period) {
-		json_t *start_obj = json_object_get(period, "periodStartDate");
-		json_t *end_obj = json_object_get(period, "periodEndDate");
-		json_t *due_obj = json_object_get(period, "dueDate");
-		json_t *recvd_obj = json_object_get(period, "receivedDate");
-		json_t *status_obj = json_object_get(period, "status");
-		const char *start = json_string_value(start_obj);
-		const char *end = json_string_value(end_obj);
-		const char *due = json_string_value(due_obj);
-		const char *recvd = json_string_value(recvd_obj);
-		const char *status = json_string_value(status_obj);
-		bool met = *status == 'F' ? true : false;
-
-		printc("%s  %15s %12s %13s %9c%s#HI_GREEN#%15s#RST#\n",
-		       get_period_color(start, end, due, met),
-		       start, end, due, *status, "#RST#", met ? recvd : "");
-        }
-
-	json_decref(result);
-
-	return 0;
 }
 
 static const struct {
@@ -1997,8 +1926,6 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return update_period(argc, argv);
 	if (IS_CMD("update-annual-summary"))
 		return update_annual_summary(argc, argv);
-	if (IS_CMD("get-end-of-period-statement-obligations"))
-		return get_eop_obligations(argc, argv);
 	if (IS_CMD("submit-final-declaration"))
 		return final_declaration(argc, argv);
 	if (IS_CMD("list-calculations"))
