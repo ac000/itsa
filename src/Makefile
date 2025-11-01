@@ -1,6 +1,6 @@
 APP = itsa
 
-GIT_VERSION = \"$(shell git describe --always --long --dirty --all)\"
+ITSA_VER = 001
 
 DEPDIR  := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
@@ -11,7 +11,7 @@ CFLAGS += -Wall -Wextra -Wdeclaration-after-statement -Wvla \
 	  -Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition \
 	  -std=gnu11 -g -O2 -Wp,-D_FORTIFY_SOURCE=2 --param=ssp-buffer-size=4 \
 	  -fno-common -fstack-protector -fPIE -fexceptions \
-	  -I../../libmtdac/include -DGIT_VERSION=${GIT_VERSION} -pipe
+	  -I../../libmtdac/include -DITSA_VER=\"${ITSA_VER}\" -pipe
 LDFLAGS += -L../../libmtdac/src -Wl,-z,now,-z,defs,-z,relro,--as-needed -pie
 LIBS	+= -lmtdac -lac -lsqlite3 -ljansson
 POSTCOMPILE = @mv -f $(DEPDIR)/$(@F).Td $(DEPDIR)/$(@F).d && touch $@

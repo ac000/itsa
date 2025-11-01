@@ -81,6 +81,7 @@ static int JKEY_FW;
 
 static void disp_usage(void)
 {
+	printf("Version: %s\n", ITSA_VER);
 	printf("Usage: itsa COMMAND [OPTIONS]\n\n");
 	printf("Commands\n");
 	printf("    init\n");
@@ -1787,6 +1788,8 @@ static void print_api_info(void)
 	char buf[32] = "\0";
 
 	printic("***\n");
+	printic("*** Version: %s\n", ITSA_VER);
+	printic("***\n");
 	printic("*** Using %s API\n",
 		is_prod_api ? "#RED#PRODUCTION#RST#" : "#TANG#TEST#RST#");
 	printic("***\n");
@@ -1869,7 +1872,7 @@ static char *set_ver_cli(void *user_data __unused)
 	int len;
 
 	encname = mtd_percent_encode(PROD_NAME, -1);
-	encver = mtd_percent_encode(GIT_VERSION, -1);
+	encver = mtd_percent_encode(ITSA_VER, -1);
 
 	len = asprintf(&buf, "%s=%s", encname, encver);
 	if (len == -1) {
