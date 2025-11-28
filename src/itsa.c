@@ -1341,8 +1341,6 @@ static int view_savings_accounts(int argc, char *argv[])
 		return -1;
 	}
 
-	printf("\n%s\n", jbuf);
-
 	if (argc < 3)
 		get_tax_year(NULL, tyear);
 	else
