@@ -555,7 +555,7 @@ static int final_declaration(int argc, char *argv[])
 {
 	json_t *result;
 	json_t *cid_obj;
-	char *jbuf __cleanup_free;
+	char *jbuf __cleanup_free = NULL;
 	char *s;
 	const char *cid;
 	const char *params[3];
@@ -982,7 +982,7 @@ static int list_calculations(int argc, char *argv[])
 	json_t *result;
 	json_t *obs;
 	json_t *calculation;
-	char *jbuf __cleanup_free;
+	char *jbuf __cleanup_free = NULL;
 	char *s;
 	char qs[20] = "\0";
 	char submit[4];
@@ -1262,7 +1262,7 @@ out_free_json:
 	"^[" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "]{1,32}$"
 static int add_savings_account(void)
 {
-	char *jbuf __cleanup_free;
+	char *jbuf __cleanup_free = NULL;
 	char *s;
 	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
 	ac_jsonw_t *json;
@@ -1454,7 +1454,7 @@ static int amend_savings_account(int argc, char *argv[])
 	json_t *taxed_int;
 	json_t *untaxed_int;
 	json_t *amnt = json_real(0.0f);
-	char *jbuf __cleanup_free;
+	char *jbuf __cleanup_free = NULL;
 	char *s;
 	char submit[3];
 	char tpath[PATH_MAX];
