@@ -201,7 +201,7 @@ itsa currently supports the following commands
        update-annual-summary <tax_year>
        submit-final-declaration <tax_year>
        list-calculations <tax_year> [calculation_type]
-       view-end-of-year-estimate
+       view-end-of-year-estimate <tax_year> <calculation_id>
        add-savings-account
        view-savings-accounts [tax_year]
        amend-savings-account <tax_year>

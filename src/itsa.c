@@ -95,7 +95,7 @@ static void disp_usage(void)
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
-	printf("    view-end-of-year-estimate\n");
+	printf("    view-end-of-year-estimate <tax_year> <calculation_id>\n");
 	printf("    add-savings-account\n");
 	printf("    view-savings-accounts [tax_year]\n");
 	printf("    amend-savings-account <tax_year>\n");
@@ -454,17 +454,22 @@ static void display_messages(const json_t *msgs_obj, const char *fmt,
 	}
 }
 
-static int display_end_of_year_est(const char *tax_year, const char *cid)
+static int view_end_of_year_estimate(int argc, char *argv[])
 {
 	json_t *result;
 	json_t *obj;
-	char *jbuf __cleanup_free;
+	char *jbuf __cleanup_free = NULL;
 	const char *params[2];
 	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
 	int err;
 
-	params[0] = tax_year;
-	params[1] = cid;
+	if (argc != 4) {
+		disp_usage();
+		return -1;
+	}
+
+	params[0] = argv[2]; /* tax_year */
+	params[1] = argv[3]; /* calculation_id */
 
 	err = mtd_ep(MTD_API_EP_ICAL_GET, NULL, &jbuf, params);
 	if (err) {
@@ -473,7 +478,7 @@ static int display_end_of_year_est(const char *tax_year, const char *cid)
 		return -1;
 	}
 
-	printsc("End of Year estimate for #BOLD#%s#RST#\n", cid);
+	printsc("End of Year estimate for #BOLD#%s#RST#\n", argv[3]);
 
 	result = get_result_json(jbuf);
 
@@ -898,64 +903,6 @@ static int set_period(const char *tax_year, const char *start, const char *end,
 	}
 
 	ac_jsonw_free(json);
-
-	return ret;
-}
-
-static int view_end_of_year_estimate(void)
-{
-	json_t *result;
-	json_t *obs;
-	char *jbuf __cleanup_free;
-	const char *cid = NULL;
-	const char *params[2];
-	char tyear[TAX_YEAR_SZ + 1];
-	size_t nr_calcs;
-	int err;
-	int ret = -1;
-
-	get_tax_year(NULL, tyear);
-
-	params[0] = tyear;
-	params[1] = "?calculationType=intent-to-finalise";
-
-	err = mtd_ep(MTD_API_EP_ICAL_LIST, NULL, &jbuf, params);
-	if (err) {
-		printec("Couldn't get calculations list. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		return -1;
-	}
-
-	result = get_result_json(jbuf);
-	obs = json_object_get(result, "calculations");
-	nr_calcs = json_array_size(obs);
-	while (nr_calcs--) {
-		json_t *calc = json_array_get(obs, nr_calcs);
-		json_t *type = json_object_get(calc, "calculationType");
-		json_t *cid_obj;
-
-		if (strcmp(json_string_value(type), "inYear") != 0)
-			continue;
-
-		cid_obj = json_object_get(calc, "calculationId");
-		cid = json_string_value(cid_obj);
-
-		break;
-	}
-
-	if (!cid) {
-		printec("No inYear calculation found for #BOLD#%s#RST#\n",
-			tyear);
-		goto out_free_json;
-	}
-
-	printsc("Found inYear calculation for #BOLD#%s#RST#\n", tyear);
-	display_end_of_year_est(tyear, cid);
-
-	ret = 0;
-
-out_free_json:
-	json_decref(result);
 
 	return ret;
 }
@@ -1932,7 +1879,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 	if (IS_CMD("list-calculations"))
 		return list_calculations(argc, argv);
 	if (IS_CMD("view-end-of-year-estimate"))
-		return view_end_of_year_estimate();
+		return view_end_of_year_estimate(argc, argv);
 	if (IS_CMD("add-savings-account"))
 		return add_savings_account();
 	if (IS_CMD("view-savings-accounts"))
