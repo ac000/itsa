@@ -3,7 +3,7 @@
 /*
  * itsa.c - Provide Income TAX Self-Assessment via UK's HMRC MTD API
  *
- * Copyright (c) 2021 - 2025	 Andrew Clayton <ac@sigsegv.uk>
+ * Copyright (c) 2021 - 2026	 Andrew Clayton <ac@sigsegv.uk>
  */
 
 #define _GNU_SOURCE
