@@ -964,19 +964,43 @@ static int list_calculations(int argc, char *argv[])
 	result = get_result_json(jbuf);
 	obs = json_object_get(result, "calculations");
 
-	printc("#CHARC#  %3s %12s %26s %29s #RST#\n",
-	       "idx", "tax_year", "calculation_id", "type");
+	printc("#CHARC#  %3s %12s %21s %25s %10s#RST#\n",
+	       "idx", "tax_year", "calculation date", "type", "outcome");
 	printc("#CHARC#"
 	       " ------------------------------------------------------------"
 	       "-----------------#RST#\n");
 	json_array_foreach(obs, index, calculation) {
+		char calc_dt[32] = "-";
 		json_t *id_obj = json_object_get(calculation,
 						 "calculationId");
 		json_t *type = json_object_get(calculation, "calculationType");
+		json_t *cts = json_object_get(calculation,
+					      "calculationTimestamp");
+		json_t *outcome = json_object_get(calculation,
+						  "calculationOutcome");
 		const char *id = json_string_value(id_obj);
+		const char *type_s = json_string_value(type);
+		const char *cts_s = json_string_value(cts);
+		const char *outcome_s = json_string_value(outcome);
 
-		printc("  #BOLD#%2zu#RST#%13s %39s %18s\n",
-		       index + 1, params[0], id, json_string_value(type));
+		if (cts_s) {
+			char *p;
+			struct tm tm = {};
+
+			/* Lose the milliseconds and TZ from the datestamp */
+			p = strptime(cts_s, "%Y-%m-%dT%T", &tm);
+			if (!p)
+				tm = (struct tm){};
+			strftime(calc_dt, sizeof(calc_dt), "%Y-%m-%dT%T", &tm);
+		}
+
+		printc("          #CHARC#id : #RST#       %s\n", id ? id : "-");
+		printc("  #BOLD#%2zu#RST#%13s %23s %25s %6c\n",
+		       index + 1, params[0], calc_dt, type_s ? type_s : "-",
+		       outcome_s ? *outcome_s : '-');
+
+		if (!id)
+			continue;
 
 		cid = malloc(sizeof(*cid));
 		cid->id = strdup(id);
@@ -985,6 +1009,7 @@ static int list_calculations(int argc, char *argv[])
         }
 
 	printf("\n");
+	printc("#CHARC#   outcome : P = PROCESSED, E = ERROR, R = REJECTED#RST#\n\n");
 	printcc("Select a calculation to view (n) or quit (Q)> ");
 	s = fgets(submit, sizeof(submit), stdin);
 	if (!s || *submit < '1' || *submit > '9')
@@ -992,7 +1017,8 @@ static int list_calculations(int argc, char *argv[])
 
 	index = atoi(submit) - 1;
 	cid = ac_slist_nth_data(calcs, index);
-	get_calculation(cid->tax_year, cid->id);
+	if (cid)
+		get_calculation(cid->tax_year, cid->id);
 
 out_free_json:
 	ac_slist_destroy(&calcs, free_calc_id);
