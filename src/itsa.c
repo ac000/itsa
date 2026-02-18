@@ -533,12 +533,8 @@ static int get_calculation(const char *tax_year, const char *cid)
 
 again:
 	err = mtd_ep(MTD_API_EP_ICAL_GET, NULL, &jbuf, params);
-	if ((err && err != MTD_ERR_REQUEST) ||
-	    (err == MTD_ERR_REQUEST && fib_sleep == 5)) {
-		printec("Couldn't get calculation. (%s)\n%s\n",
-			mtd_err2str(err), jbuf);
-		return -1;
-	} else if (err == MTD_ERR_REQUEST) {
+	if (err == MTD_ERR_REQUEST &&
+	    mtd_http_status_code(jbuf) == MTD_HTTP_NOT_FOUND && fib_sleep < 5) {
 		fib_sleep = next_fib(fib_sleep);
 		printic("Trying to get calculation again in "
 			"#BOLD#%d#RST# second(s)\n", fib_sleep);
@@ -546,6 +542,10 @@ again:
 		sleep(fib_sleep);
 
 		goto again;
+	} else if (err) {
+		printec("Couldn't get calculation. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		return -1;
 	}
 
 	result = get_result_json(jbuf);
