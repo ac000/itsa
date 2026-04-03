@@ -736,7 +736,7 @@ static int annual_summary(const char *tax_year)
 	json_t *result;
 	char *jbuf __cleanup_free;
 	char *s;
-	char tpath[PATH_MAX];
+	char tpath[] = "/tmp/.itsa_annual_summary.XXXXXX.json";
 	char submit[3] = "\0";
 	const char *params[2];
 	int tmpfd;
@@ -755,12 +755,11 @@ static int annual_summary(const char *tax_year)
 
 	printsc("Annual Summary for #BOLD#%s#RST#\n", tax_year);
 
-	snprintf(tpath, sizeof(tpath), "/tmp/.itsa_annual_summary.tmp.%d.json",
-		 getpid());
-	tmpfd = open(tpath, O_CREAT|O_TRUNC|O_RDWR|O_EXCL, 0666);
+	tmpfd = mkstemps(tpath, 5);
 	if (tmpfd == -1) {
-		printec("Couldn't open %s in %s\n", tpath, __func__);
-		perror("open");
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
 		return -1;
 	}
 
@@ -1430,7 +1429,7 @@ static int amend_savings_account(int argc, char *argv[])
 	char *jbuf __cleanup_free = NULL;
 	char *s;
 	char submit[3];
-	char tpath[PATH_MAX];
+	char tpath[] = "/tmp/.itsa_savings_account.XXXXXX.json";
 	const char *args[3] = {};
 	const char *params[2];
 	int child_pid;
@@ -1479,12 +1478,11 @@ static int amend_savings_account(int argc, char *argv[])
 	if (!untaxed_int)
 		json_object_set(result, "untaxedUkInterest", amnt);
 
-	snprintf(tpath, sizeof(tpath),
-		 "/tmp/.itsa_savings_account.tmp.%d.json", getpid());
-	tmpfd = open(tpath, O_CREAT|O_TRUNC|O_RDWR|O_EXCL, 0666);
+	tmpfd = mkstemps(tpath, 5);
 	if (tmpfd == -1) {
-		printec("Couldn't open %s in %s\n", tpath, __func__);
-		perror("open");
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
 		goto out_free_list;
 	}
 
