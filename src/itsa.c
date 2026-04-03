@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <spawn.h>
-#include <regex.h>
 #include <limits.h>
 
 #include <sqlite3.h>
@@ -1230,8 +1229,6 @@ out_free_json:
 }
 
 #define SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS	"A-Za-z0-9 &'()*,-./@£"
-#define SAVINGS_ACCOUNT_NAME_REGEX \
-	"^[" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "]{1,32}$"
 static int add_savings_account(void)
 {
 	char *jbuf __cleanup_free = NULL;
@@ -1239,18 +1236,10 @@ static int add_savings_account(void)
 	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
 	ac_jsonw_t *json;
 	struct mtd_dsrc_ctx dsctx;
-	regex_t re;
-	regmatch_t pmatch[1];
 	int ret;
 	int err;
 
-	err = regcomp(&re, SAVINGS_ACCOUNT_NAME_REGEX, REG_EXTENDED);
-	if (err) {
-		perror("regcomp");
-		return -1;
-	}
-
-	printic("Enter a friendly account name, allowed characters are :-\n"
+	printic("Enter a friendly account name, allowed characters are (max 32) :-\n"
 		"\n\t#BOLD#" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "#RST#\n");
 
 again:
@@ -1261,8 +1250,8 @@ again:
 		return 0;
 
 	ac_str_chomp(submit);
-	ret = regexec(&re, submit, 1, pmatch, 0);
-	if (ret != 0) {
+
+	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, submit)) {
 		printec("Invalid name\n");
 		goto again;
 	}
@@ -1288,7 +1277,6 @@ again:
 	ret = 0;
 
 out_free:
-	regfree(&re);
 	ac_jsonw_free(json);
 
 	return ret;
