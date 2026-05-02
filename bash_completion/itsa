@@ -1,5 +1,10 @@
-# Either copy this into /usr/share/bash-completion/completions/
-# or you can load it in situ with 'source itsa'
+# Copy this file into someplace like
+#
+#   /etc/bash_completion.d/ or
+#   ~/.bash_completion.d/
+#
+# This should then get picked up by new shells.
+# You can load it in current shells with 'source itsa'
 
 _itsa()
 {
