@@ -1906,8 +1906,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 
 static const FILE *set_log_fp(const char *log_level)
 {
-	FILE *fp;
-	char *ll;
+	char *ll __cleanup_free = NULL;
 	char *ptr;
 	char *ptrm;
 	const char *mode = "we";
@@ -1932,10 +1931,7 @@ static const FILE *set_log_fp(const char *log_level)
 		mode = "ae";
 
 out:
-	fp = fopen(ptr, mode);
-	free(ll);
-
-	return fp;
+	return fopen(ptr, mode);
 }
 
 int main(int argc, char *argv[])
