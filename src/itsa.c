@@ -1376,8 +1376,7 @@ static int get_savings_accounts_list(ac_slist_t **accounts)
 	size_t index;
 	int err;
 
-	err = mtd_ep(MTD_API_EP_ISI_SI_UK_LIST, NULL, &jbuf,
-		     (const char *[1]){});
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_LIST, NULL, &jbuf, NULL);
 	if (err) {
 		printec("Couldn't get list of savings accounts. (%s)\n%s\n",
 			mtd_err2str(err), jbuf);
