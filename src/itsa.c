@@ -403,7 +403,7 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 				 json_is_true(value) ? "true" : "false");
 			break;
 		case JSON_NULL:
-			sprintf(val, "null");
+			snprintf(val, sizeof(val), "null");
 			break;
 		}
 
