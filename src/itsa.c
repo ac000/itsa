@@ -954,7 +954,7 @@ static int list_calculations(int argc, char *argv[])
 	json_t *calculation;
 	char *jbuf __cleanup_free = NULL;
 	char *s __cleanup_free = NULL;
-	char qs[20] = "\0";
+	char qs[64] = "\0";
 	const char *params[2] = {};
 	size_t index;
 	ac_slist_t *calcs = NULL;
