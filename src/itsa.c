@@ -1973,7 +1973,7 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return do_init_all(cfg);
 	if (IS_CMD("re-auth"))
 		return init_auth();
-	if (IS_CMD("switch_business"))
+	if (IS_CMD("switch-business"))
 		return switch_business();
 	if (IS_CMD("list-periods"))
 		return list_periods(argc, argv);
