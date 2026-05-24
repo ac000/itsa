@@ -115,6 +115,32 @@ static inline void xfree(char **p)
 	free(*p);
 }
 
+static inline ssize_t getstdin(char **lineptr)
+{
+	size_t size = 0;
+	ssize_t sz;
+
+	/*
+	 * This function may be called multiple times from a
+	 * function, but each call is independent of the other,
+	 * so we want to start afresh each time.
+	 *
+	 * On the first call lineptr will be NULL, on subsequent
+	 * calls it will either be NULL or a valid pointer.
+	 */
+	free(*lineptr);
+	*lineptr = NULL;
+
+	sz = getline(lineptr, &size, stdin);
+	if (sz == -1) {
+		free(*lineptr);
+		*lineptr = NULL;
+		return -1;
+	}
+
+	return sz;
+}
+
 /*
  * Simple wrapper around time(2) that allows to override the
  * current date.
@@ -561,10 +587,9 @@ static int final_declaration(int argc, char *argv[])
 	json_t *result;
 	json_t *cid_obj;
 	char *jbuf __cleanup_free = NULL;
-	char *s;
+	char *s __cleanup_free = NULL;
 	const char *cid;
 	const char *params[3];
-	char submit[32];
 	int ret = -1;
 	int err;
 
@@ -598,8 +623,8 @@ static int final_declaration(int argc, char *argv[])
 	printf("\n");
 	printcc("Submit 'Final Declaration' for this TAX return? (y/N)> ");
 
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || (*submit != 'y' && *submit != 'Y'))
+	getstdin(&s);
+	if (!s || (*s != 'y' && *s != 'Y'))
 		goto out_ok;
 
 	printf("\n");
@@ -610,8 +635,8 @@ static int final_declaration(int argc, char *argv[])
 	printf("\n");
 	printcc("Enter (without the quotes) 'i agree'> ");
 
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || strcmp(submit, "i agree\n") != 0)
+	getstdin(&s);
+	if (!s || strcmp(s, "i agree\n") != 0)
 		goto out_ok;
 
 	free(jbuf);
@@ -735,9 +760,8 @@ static int annual_summary(const char *tax_year)
 {
 	json_t *result;
 	char *jbuf __cleanup_free;
-	char *s;
+	char *s __cleanup_free = NULL;
 	char tpath[] = "/tmp/.itsa_annual_summary.XXXXXX.json";
-	char submit[3] = "\0";
 	const char *params[2];
 	int tmpfd;
 	int ret = -1;
@@ -775,11 +799,11 @@ again:
 	lseek(tmpfd, 0, SEEK_SET);
 	printf("\n");
 	printcc("Submit (s), Edit (e), Quit (Q)> ");
-	s = fgets(submit, sizeof(submit), stdin);
+	getstdin(&s);
 	if (!s)
 		goto again;
 
-	switch (*submit) {
+	switch (*s) {
 	case 's':
 	case 'S': {
 		struct mtd_dsrc_ctx dsctx = {
@@ -929,9 +953,8 @@ static int list_calculations(int argc, char *argv[])
 	json_t *obs;
 	json_t *calculation;
 	char *jbuf __cleanup_free = NULL;
-	char *s;
+	char *s __cleanup_free = NULL;
 	char qs[20] = "\0";
-	char submit[4];
 	const char *params[2] = {};
 	size_t index;
 	ac_slist_t *calcs = NULL;
@@ -1010,11 +1033,11 @@ static int list_calculations(int argc, char *argv[])
 	printf("\n");
 	printc("#CHARC#   outcome : P = PROCESSED, E = ERROR, R = REJECTED#RST#\n\n");
 	printcc("Select a calculation to view (n) or quit (Q)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || *submit < '1' || *submit > '9')
+	getstdin(&s);
+	if (!s || *s < '1' || *s > '9')
 		goto out_free_json;
 
-	index = atoi(submit) - 1;
+	index = atoi(s) - 1;
 	cid = ac_slist_nth_data(calcs, index);
 	if (cid)
 		get_calculation(cid->tax_year, cid->id);
@@ -1034,15 +1057,14 @@ static int __period_update(const char *tax_year, const char *start,
 	long income;
 	long expenses;
 	int err;
-	char *s;
-	char submit[3];
+	char *s __cleanup_free = NULL;
 
 	get_data(start, end, &income, &expenses);
 
 	printcc("Submit? (y/N)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-        if (!s || (*submit != 'y' && *submit != 'Y'))
-                return 0;
+	getstdin(&s);
+	if (!s || (*s != 'y' && *s != 'Y'))
+		return 0;
 
 	err = set_period(tax_year, start, end, income, expenses);
 	if (err)
@@ -1233,8 +1255,7 @@ out_free_json:
 static int add_savings_account(void)
 {
 	char *jbuf __cleanup_free = NULL;
-	char *s;
-	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
+	char *s __cleanup_free = NULL;
 	ac_jsonw_t *json;
 	struct mtd_dsrc_ctx dsctx;
 	int ret;
@@ -1246,19 +1267,19 @@ static int add_savings_account(void)
 again:
 	printf("\n");
 	printcc("Name> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || *submit == '\n')
+	getstdin(&s);
+	if (!s || *s == '\n')
 		return 0;
 
-	ac_str_chomp(submit);
+	ac_str_chomp(s);
 
-	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, submit)) {
+	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, s)) {
 		printec("Invalid name\n");
 		goto again;
 	}
 
 	json = ac_jsonw_init();
-	ac_jsonw_add_str(json, "accountName", submit);
+	ac_jsonw_add_str(json, "accountName", s);
 	ac_jsonw_end(json);
 
 	dsctx.data_src.buf = ac_jsonw_get(json);
@@ -1273,7 +1294,7 @@ again:
 		goto out_free;
 	}
 
-	printsc("Added savings account : #BOLD#%s#RST#\n", submit);
+	printsc("Added savings account : #BOLD#%s#RST#\n", s);
 
 	ret = 0;
 
@@ -1415,8 +1436,7 @@ static int amend_savings_account(int argc, char *argv[])
 	json_t *untaxed_int;
 	json_t *amnt = json_real(0.0f);
 	char *jbuf __cleanup_free = NULL;
-	char *s;
-	char submit[3];
+	char *s __cleanup_free = NULL;
 	char tpath[] = "/tmp/.itsa_savings_account.XXXXXX.json";
 	const char *args[3] = {};
 	const char *params[2];
@@ -1434,12 +1454,12 @@ static int amend_savings_account(int argc, char *argv[])
 	get_savings_accounts_list(&accounts);
 	printf("\n");
 	printcc("Select account to edit (n) or quit (Q)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || *submit < '1' || *submit > '9')
+	getstdin(&s);
+	if (!s || *s < '1' || *s > '9')
 		goto out_free_list;
 
 	params[0] = argv[2];	/* taxYear */
-	params[1] = ac_slist_nth_data(accounts, atoi(submit) - 1); /* said */
+	params[1] = ac_slist_nth_data(accounts, atoi(s) - 1); /* said */
 	if (!params[1]) {
 		printec("No such account index\n");
 		goto out_free_list;
@@ -1518,8 +1538,7 @@ static int amend_savings_account_name(void)
 	ac_slist_t *accounts = NULL;
 	ac_jsonw_t *json;
 	char *jbuf __cleanup_free = NULL;
-	char *s;
-	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
+	char *s __cleanup_free = NULL;
 	const char *params[1];
 	int ret = 0;
 	int err;
@@ -1530,11 +1549,11 @@ static int amend_savings_account_name(void)
 
 	printf("\n");
 	printcc("Select account to edit (n) or quit (Q)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || *submit < '1' || *submit > '9')
+	getstdin(&s);
+	if (!s || *s < '1' || *s > '9')
 		goto out_free_list;
 
-	params[0] = ac_slist_nth_data(accounts, atoi(submit) - 1); /* said */
+	params[0] = ac_slist_nth_data(accounts, atoi(s) - 1); /* said */
 	if (!params[0]) {
 		printec("No such account index\n");
 		ret = -1;
@@ -1547,19 +1566,19 @@ static int amend_savings_account_name(void)
 again:
 	printf("\n");
 	printcc("Name> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	if (!s || *submit == '\n')
+	getstdin(&s);
+	if (!s || *s == '\n')
 		goto out_free_list;
 
-	ac_str_chomp(submit);
+	ac_str_chomp(s);
 
-	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, submit)) {
+	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, s)) {
 		printec("Invalid name\n");
 		goto again;
 	}
 
 	json = ac_jsonw_init();
-	ac_jsonw_add_str(json, "accountName", submit);
+	ac_jsonw_add_str(json, "accountName", s);
 	ac_jsonw_end(json);
 
 	dsctx.data_src.buf = ac_jsonw_get(json);
@@ -1576,7 +1595,7 @@ again:
 		goto out_free;
 	}
 
-	printsc("Updated savings account name : #BOLD#%s#RST#\n", submit);
+	printsc("Updated savings account name : #BOLD#%s#RST#\n", s);
 
 	ret = 0;
 
@@ -1599,9 +1618,8 @@ static int switch_business(void)
 	size_t idx;
 	size_t didx;
 	char path[PATH_MAX];
-	char *s;
-	char submit[6];
-	int def_bus = 0;
+	char *s __cleanup_free = NULL;
+	int def_bus;
 
 	snprintf(path, sizeof(path), "%s/" ITSA_CFG, getenv("HOME"));
 	config = json_load_file(path, 0, &error);
@@ -1635,12 +1653,11 @@ static int switch_business(void)
 
 again:
 	printcc("Select a business to use as default (n)> ");
-	s = fgets(submit, sizeof(submit), stdin);
-	def_bus = atoi(submit);
-	if (!s || *s < '0' || *s > '9' ||
-	    def_bus > (int)json_array_size(lob))
+	getstdin(&s);
+	if (!s || *s < '0' || *s > '9' || atoi(s) >= (int)json_array_size(lob))
 		goto again;
 
+	def_bus = atoi(s);
 	bus = json_array_get(lob, def_bus);
 	printf("\n");
 	printsc("Using #BOLD#%s#RST# / #BOLD#%s#RST# as default business\n",
@@ -1665,8 +1682,7 @@ static int set_business(void)
 	size_t idx;
 	char *jbuf __cleanup_free;
 	char path[PATH_MAX];
-	char *s;
-	char submit[PATH_MAX];
+	char *s __cleanup_free = NULL;
 	int def_bus = 0;
 	int err;
 
@@ -1721,17 +1737,22 @@ static int set_business(void)
 	if (json_array_size(lob) > 1) {
 again:
 		printcc("Select a business to use as default (n)> ");
-		s = fgets(submit, sizeof(submit), stdin);
-		def_bus = atoi(submit);
+		getstdin(&s);
 		if (!s || *s < '0' || *s > '9' ||
-		    def_bus > (int)json_array_size(lob))
+		    atoi(s) >= (int)json_array_size(lob))
 			goto again;
+
+		def_bus = atoi(s);
 	}
 	json_object_set_new(config, "business_idx", json_integer(def_bus));
 
 	printf("\n");
+again_data_source:
 	printcc("Enter the data source path for the default business> ");
-	s = fgets(submit, sizeof(submit), stdin);
+	getstdin(&s);
+	if (!s)
+		goto again_data_source;
+
 	ac_str_chomp(s);
 	bus = json_array_get(ba, def_bus);
 	json_object_set_new(bus, "gnc_sqlite", json_string(s));
@@ -1773,13 +1794,12 @@ static int do_init_all(const struct mtd_cfg *cfg)
 
 		err = fstatat(dfd, "creds.json", &sb, 0);
 		if (!err) {
-			char *s;
-			char submit[3];
+			char *s __cleanup_free = NULL;
 
 			printwc("Existing libmtdac config found @ %s\n", path);
 			printcc("Continue? (y/N)> ");
-			s = fgets(submit, sizeof(submit), stdin);
-			if (!s || (*submit != 'y' && *submit != 'Y'))
+			getstdin(&s);
+			if (!s || (*s != 'y' && *s != 'Y'))
 				return 0;
 			printf("\n");
 		}
