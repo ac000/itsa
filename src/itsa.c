@@ -98,6 +98,7 @@ static void disp_usage(void)
 	printf("    add-savings-account\n");
 	printf("    view-savings-accounts [tax_year]\n");
 	printf("    amend-savings-account <tax_year>\n");
+	printf("    amend-savings-account-name\n");
 }
 
 static void free_config(void)
@@ -1511,6 +1512,83 @@ out_free_list:
 	return ret;
 }
 
+static int amend_savings_account_name(void)
+{
+	struct mtd_dsrc_ctx dsctx;
+	ac_slist_t *accounts = NULL;
+	ac_jsonw_t *json;
+	char *jbuf __cleanup_free = NULL;
+	char *s;
+	char submit[33]; /* Max allowed account name is 32 chars (+ nul) */
+	const char *params[1];
+	int ret = 0;
+	int err;
+
+	err = get_savings_accounts_list(&accounts);
+	if (err)
+		return -1;
+
+	printf("\n");
+	printcc("Select account to edit (n) or quit (Q)> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	if (!s || *submit < '1' || *submit > '9')
+		goto out_free_list;
+
+	params[0] = ac_slist_nth_data(accounts, atoi(submit) - 1); /* said */
+	if (!params[0]) {
+		printec("No such account index\n");
+		ret = -1;
+		goto out_free_list;
+	}
+
+	printic("Enter a new account name, allowed characters are (max 32) :-\n"
+		"\n\t#BOLD#" SAVINGS_ACCOUNT_NAME_ALLOWED_CHARS "#RST#\n");
+
+again:
+	printf("\n");
+	printcc("Name> ");
+	s = fgets(submit, sizeof(submit), stdin);
+	if (!s || *submit == '\n')
+		goto out_free_list;
+
+	ac_str_chomp(submit);
+
+	if (!mtd_is_valid_fmt(MTD_VLDT_FMT_ACCOUNT_NAME, submit)) {
+		printec("Invalid name\n");
+		goto again;
+	}
+
+	json = ac_jsonw_init();
+	ac_jsonw_add_str(json, "accountName", submit);
+	ac_jsonw_end(json);
+
+	dsctx.data_src.buf = ac_jsonw_get(json);
+	dsctx.data_len = -1;
+	dsctx.src_type = MTD_DATA_SRC_BUF;
+
+	ret = -1;
+
+	err = mtd_ep(MTD_API_EP_ISI_SI_UK_UPDATE_SA_NAME, &dsctx, &jbuf,
+		     params);
+	if (err) {
+		printec("Couldn't update savings account name. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		goto out_free;
+	}
+
+	printsc("Updated savings account name : #BOLD#%s#RST#\n", submit);
+
+	ret = 0;
+
+out_free:
+	ac_jsonw_free(json);
+
+out_free_list:
+	ac_slist_destroy(&accounts, free);
+
+	return ret;
+}
+
 static int switch_business(void)
 {
 	json_t *lob;
@@ -1897,6 +1975,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return view_savings_accounts(argc, argv);
 	if (IS_CMD("amend-savings-account"))
 		return amend_savings_account(argc, argv);
+	if (IS_CMD("amend-savings-account-name"))
+		return amend_savings_account_name();
 
 	disp_usage();
 

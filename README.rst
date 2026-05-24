@@ -205,6 +205,7 @@ itsa currently supports the following commands
        add-savings-account
        view-savings-accounts [tax_year]
        amend-savings-account <tax_year>
+       amend-savings-account-name
 
 It requires a little bit of config…
 
