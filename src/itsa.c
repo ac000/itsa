@@ -725,8 +725,12 @@ static int trigger_calculation(const char *tax_year, const char *type)
 	printsc("Triggered calculation for #BOLD#%s#RST#\n", tax_year);
 
 	result = get_result_json(jbuf);
-	cid_obj = json_object_get(result, "id");
+	cid_obj = json_object_get(result, "calculationId");
 	cid = json_string_value(cid_obj);
+	if (!cid) {
+		printec("Couldn't get calculationId from JSON result\n");
+		goto out_free_json;
+	}
 
 	err = get_calculation(tax_year, cid);
 	if (err) {
