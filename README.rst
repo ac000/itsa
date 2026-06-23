@@ -198,6 +198,7 @@ itsa currently supports the following commands
        list-periods [<start> <end>]
        create-period <tax_year> [<start> <end>]
        update-period <tax_year> <period_id>
+       trigger-bsas [<start_date> <end_date>]
        update-annual-summary <tax_year>
        submit-final-declaration <tax_year>
        list-calculations <tax_year> [calculation_type]

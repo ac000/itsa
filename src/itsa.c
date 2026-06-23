@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <spawn.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <sqlite3.h>
 
@@ -91,6 +92,7 @@ static void disp_usage(void)
 	printf("    list-periods [<start> <end>]\n");
 	printf("    create-period <tax_year> [<start> <end>]\n");
 	printf("    update-period <tax_year> <period_id>\n");
+	printf("    trigger-bsas [<start_date> <end_date>]\n");
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
@@ -139,6 +141,35 @@ static inline ssize_t getstdin(char **lineptr)
 	}
 
 	return sz;
+}
+
+static ssize_t xwrite(int fd, const void *buf, size_t count)
+{
+	size_t total = 0;
+
+	if (count > SSIZE_MAX) {
+		errno = EOVERFLOW;
+		return -1;
+	}
+
+	while (total < count) {
+		ssize_t bytes = write(fd, buf + total, count - total);
+
+		if (bytes == -1) {
+			if (errno == EINTR)
+				continue;
+			return -1;
+		}
+
+		if (bytes == 0) {
+			errno = EIO;
+			return -1;
+		}
+
+		total += (size_t)bytes;
+	}
+
+	return (ssize_t)total;
 }
 
 /*
@@ -880,6 +911,152 @@ static int update_annual_summary(int argc, char *argv[])
 	}
 
 	return annual_summary(argv[2]);
+}
+
+static int display_bsas(json_t *root)
+{
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+
+	if (!root)
+		return -1;
+
+	JKEY_FW = 36;
+	print_json_tree(root, bread_crumb, 0, NULL);
+
+	return 0;
+}
+
+static int trigger_bsas(int argc, char *argv[])
+{
+	ac_jsonw_t *jsonw;
+	json_t *json;
+	char tyear[TAX_YEAR_SZ + 1];
+	char start_date[11];
+	char end_date[11];
+	char tpath[] = "/tmp/.itsa_trigger_bsas.XXXXXX.json";
+	const char *jstr;
+	char *s __cleanup_free = NULL;
+	ssize_t bytes_wrote;
+	int ret = -1;
+	int tmpfd;
+
+	if (argc != 2 && argc != 4) {
+		disp_usage();
+		return -1;
+	}
+
+	if (argc == 2) {
+		get_tax_year(NULL, tyear);
+
+		memcpy(start_date, tyear, 4);
+		memcpy(start_date + 4, "-04-06\0", 7);
+
+		memcpy(end_date, "20", 2);
+		memcpy(end_date + 2, tyear + 5, 2);
+		memcpy(end_date + 4, "-04-05\0", 7);
+	} else {
+		snprintf(start_date, sizeof(start_date), "%s", argv[2]);
+		snprintf(end_date, sizeof(end_date), "%s", argv[3]);
+	}
+
+	tmpfd = mkstemps(tpath, 5);
+	if (tmpfd == -1) {
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
+		return -1;
+	}
+
+	jsonw = ac_jsonw_init();
+
+	ac_jsonw_add_object(jsonw, "accountingPeriod");
+	ac_jsonw_add_str(jsonw, "startDate", start_date);
+	ac_jsonw_add_str(jsonw, "endDate", end_date);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_str(jsonw, "typeOfBusiness", BUSINESS_TYPE);
+	ac_jsonw_add_str(jsonw, "businessId", BUSINESS_ID);
+
+	ac_jsonw_end(jsonw);
+
+	jstr = ac_jsonw_get(jsonw);
+	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
+	if (bytes_wrote == -1) {
+		printec("Couldn't write BSAS JSON\n");
+		perror("write");
+		goto out_cleanup;
+	}
+	lseek(tmpfd, 0, SEEK_SET);
+
+	printic("Trigger a Business Source Adjustable Summary\n");
+
+again:
+	json = json_loadfd(tmpfd, 0, NULL);
+	lseek(tmpfd, 0, SEEK_SET);
+	display_bsas(json);
+	json_decref(json);
+	printf("\n");
+	printcc("Submit (s), Edit (e), Quit (Q)> ");
+	getstdin(&s);
+	if (!s)
+		goto again;
+
+	switch (*s) {
+	case 's':
+	case 'S': {
+		int err;
+		json_t *result;
+		json_t *cid_obj;
+		const char *cid;
+		char *jbuf __cleanup_free;
+		struct mtd_dsrc_ctx dsctx = {
+			.data_src.fd = tmpfd,
+			.src_type = MTD_DATA_SRC_FD
+		};
+
+		err = mtd_ep(MTD_API_EP_BSAS_TRIGGER, &dsctx, &jbuf, NULL);
+		if (err) {
+			printec("Failed to trigger Business Source Adjustable Summary. "
+				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			goto out_cleanup;
+		}
+
+		result = get_result_json(jbuf);
+		cid_obj = json_object_get(result, "calculationId");
+		cid = json_string_value(cid_obj);
+
+		printsc("BSAS calculationId: #BOLD#%s#RST#\n",
+			cid ? : "(null)");
+
+		json_decref(result);
+
+		break;
+	}
+	case 'e':
+	case 'E': {
+		const char *args[3] = {};
+		pid_t child_pid;
+		int status;
+
+		args[0] = get_editor();
+		args[1] = tpath;
+		posix_spawnp(&child_pid, args[0], NULL, NULL,
+			     (char * const *)args, environ);
+		waitpid(child_pid, &status, 0);
+
+		goto again;
+	}
+	}
+
+	ret = 0;
+
+out_cleanup:
+	ac_jsonw_free(jsonw);
+
+	close(tmpfd);
+	unlink(tpath);
+
+	return ret;
 }
 
 static int set_period(const char *tax_year, const char *start, const char *end,
@@ -1985,6 +2162,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return create_period(argc, argv);
 	if (IS_CMD("update-period"))
 		return update_period(argc, argv);
+	if (IS_CMD("trigger-bsas"))
+		return trigger_bsas(argc, argv);
 	if (IS_CMD("update-annual-summary"))
 		return update_annual_summary(argc, argv);
 	if (IS_CMD("submit-final-declaration"))
