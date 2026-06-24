@@ -189,6 +189,40 @@ static time_t xtime(void)
 	return mktime(&tm);
 }
 
+static const char *get_editor(void)
+{
+	const char *editor = getenv("VISUAL");
+
+	if (!editor)
+		editor = getenv("EDITOR");
+	if (!editor)
+		editor = DEFAULT_EDITOR;
+
+	return editor;
+}
+
+extern char **environ;
+static int open_editor(const char *path)
+{
+	const char *args[3] = { get_editor(), path, NULL };
+	pid_t child_pid;
+	int status;
+	int err;
+
+	err = posix_spawnp(&child_pid, args[0], NULL, NULL,
+			   (char * const *)args, environ);
+	if (err) {
+		printec("Failed to open editor '%s': %s\n", args[0],
+			strerror(err));
+		return -1;
+	}
+
+	while (waitpid(child_pid, &status, 0) == -1 && errno == EINTR)
+		;
+
+	return 0;
+}
+
 static json_t *get_result_json(const char *buf)
 {
 	json_t *jarray;
@@ -778,19 +812,6 @@ out_free_json:
 	return ret;
 }
 
-static const char *get_editor(void)
-{
-	const char *editor = getenv("VISUAL");
-
-	if (!editor)
-		editor = getenv("EDITOR");
-	if (!editor)
-		editor = DEFAULT_EDITOR;
-
-	return editor;
-}
-
-extern char **environ;
 static int annual_summary(const char *tax_year)
 {
 	json_t *result;
@@ -862,20 +883,13 @@ again:
 		if (err)
 			goto out_free_json;
 
-		ret = 0;
 		break;
 	}
 	case 'e':
 	case 'E': {
-		const char *args[3] = {};
-		int child_pid;
-		int status;
-
-		args[0] = get_editor();
-		args[1] = tpath;
-		posix_spawnp(&child_pid, args[0], NULL, NULL,
-			     (char * const *)args, environ);
-		waitpid(child_pid, &status, 0);
+		err = open_editor(tpath);
+		if (err)
+			goto out_free_json;
 
 		json_decref(result);
 		result = json_loadfd(tmpfd, 0, NULL);
@@ -889,10 +903,9 @@ again:
 
 		goto again;
 	}
-	default:
-		ret = -2;
-		break;
 	}
+
+	ret = 0;
 
 out_free_json:
 	json_decref(result);
@@ -1034,15 +1047,11 @@ again:
 	}
 	case 'e':
 	case 'E': {
-		const char *args[3] = {};
-		pid_t child_pid;
-		int status;
+		int err;
 
-		args[0] = get_editor();
-		args[1] = tpath;
-		posix_spawnp(&child_pid, args[0], NULL, NULL,
-			     (char * const *)args, environ);
-		waitpid(child_pid, &status, 0);
+		err = open_editor(tpath);
+		if (err)
+			goto out_cleanup;
 
 		goto again;
 	}
@@ -1621,8 +1630,6 @@ static int amend_savings_account(int argc, char *argv[])
 	char tpath[] = "/tmp/.itsa_savings_account.XXXXXX.json";
 	const char *args[3] = {};
 	const char *params[2];
-	int child_pid;
-	int status;
 	int tmpfd;
 	int ret = -1;
 	int err;
@@ -1678,11 +1685,9 @@ static int amend_savings_account(int argc, char *argv[])
 	json_dumpfd(result, tmpfd, JSON_INDENT(4));
 	lseek(tmpfd, 0, SEEK_SET);
 
-	args[0] = get_editor();
-	args[1] = tpath;
-	posix_spawnp(&child_pid, args[0], NULL, NULL, (char * const *)args,
-		     environ);
-	waitpid(child_pid, &status, 0);
+	err = open_editor(tpath);
+	if (err)
+		goto out_close_tmpfd;
 
 	dsctx.data_src.fd = tmpfd;
 	dsctx.src_type = MTD_DATA_SRC_FD;
