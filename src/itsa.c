@@ -96,6 +96,7 @@ static void disp_usage(void)
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
+	printf("    delete-individual-losses-claims <tax_year>\n");
 	printf("    view-individual-losses-claims <tax_year>\n");
 	printf("    amend-individual-losses-claims <tax_year>\n");
 	printf("    view-end-of-year-estimate <tax_year> <calculation_id>\n");
@@ -545,6 +546,39 @@ static void display_messages(const json_t *msgs_obj, const char *fmt,
 		printf(" [\n   %s: %s\n ]\n", json_string_value(id),
 		       json_string_value(text));
 	}
+}
+
+static int delete_individual_losses_claims(int argc, char *argv[])
+{
+	char *jbuf __cleanup_free = NULL;
+	char *s __cleanup_free = NULL;
+	const char *params[2];
+	int err;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	printcc("Are you sure? (N/y)> ");
+	getstdin(&s);
+	if (!s || (*s != 'y' && *s != 'Y'))
+	    return 0;
+
+	params[0] = BUSINESS_ID;
+	params[1] = argv[2];	/* tax_year */
+
+	err = mtd_ep(MTD_API_EP_IL_DELETE, NULL, &jbuf, params);
+	if (err) {
+		printec("Failed to delete individual losses & claims. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		return -1;
+	}
+
+	printsc("Deleted individual losses & claims for #BOLD#%s#RST#\n",
+		argv[2]);
+
+	return 0;
 }
 
 static int view_individual_losses_claims(int argc, char *argv[])
@@ -2347,6 +2381,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return final_declaration(argc, argv);
 	if (IS_CMD("list-calculations"))
 		return list_calculations(argc, argv);
+	if (IS_CMD("delete-individual-losses-claims"))
+		return delete_individual_losses_claims(argc, argv);
 	if (IS_CMD("view-individual-losses-claims"))
 		return view_individual_losses_claims(argc, argv);
 	if (IS_CMD("amend-individual-losses-claims"))
