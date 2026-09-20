@@ -96,6 +96,7 @@ static void disp_usage(void)
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
+	printf("    view-individual-losses-claims <tax_year>\n");
 	printf("    amend-individual-losses-claims <tax_year>\n");
 	printf("    view-end-of-year-estimate <tax_year> <calculation_id>\n");
 	printf("    add-savings-account\n");
@@ -544,6 +545,41 @@ static void display_messages(const json_t *msgs_obj, const char *fmt,
 		printf(" [\n   %s: %s\n ]\n", json_string_value(id),
 		       json_string_value(text));
 	}
+}
+
+static int view_individual_losses_claims(int argc, char *argv[])
+{
+	json_t *result;
+	char *jbuf __cleanup_free = NULL;
+	const char *params[2];
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	int err;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	params[0] = BUSINESS_ID;
+	params[1] = argv[2];	/* tax_year */
+
+	err = mtd_ep(MTD_API_EP_IL_GET, NULL, &jbuf, params);
+	if (err) {
+		printec("Couldn't get individual losses & claims. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		return -1;
+	}
+
+	printsc("Individual Losses & Claims for #BOLD#%s#RST#\n", argv[2]);
+
+	result = get_result_json(jbuf);
+
+	JKEY_FW = 32;
+	print_json_tree(result, bread_crumb, 0, NULL);
+
+	json_decref(result);
+
+	return 0;
 }
 
 static int display_amend_individual_losses_claims(json_t *root)
@@ -2311,6 +2347,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return final_declaration(argc, argv);
 	if (IS_CMD("list-calculations"))
 		return list_calculations(argc, argv);
+	if (IS_CMD("view-individual-losses-claims"))
+		return view_individual_losses_claims(argc, argv);
 	if (IS_CMD("amend-individual-losses-claims"))
 		return amend_individual_losses_claims(argc, argv);
 	if (IS_CMD("view-end-of-year-estimate"))
