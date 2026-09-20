@@ -1,6 +1,6 @@
 APP = itsa
 
-ITSA_VER = 006
+ITSA_VER = 007
 
 DEPDIR  := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
