@@ -2223,6 +2223,7 @@ out:
 
 int main(int argc, char *argv[])
 {
+	int h = 0;
 	int err;
 	int ret = EXIT_SUCCESS;
 	unsigned int flags = MTD_OPT_GLOBAL_INIT;
@@ -2244,7 +2245,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	extra_hdrs[0] = getenv("ITSA_GOV_TEST_SCENARIO");
+	extra_hdrs[h] = getenv("ITSA_GOV_TEST_SCENARIO");
+	if (extra_hdrs[h])
+		h++;
+	extra_hdrs[h] = getenv("ITSA_SUSPEND_TEMPORAL_VALIDATIONS");
 
 	set_colors();
 

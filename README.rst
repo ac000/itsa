@@ -310,6 +310,18 @@ testing, e.g.
 
    $ ITSA_GOV_TEST_SCENARIO="Gov-Test-Scenario: STATEFUL" ./itsa ...
 
+ITSA_SUSPEND_TEMPORAL_VALIDATIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When supplied and set to *true*, this header relaxes tax year validation
+rule to allow in-year submissions for endpoints configured for end-of-year
+submissions. Not supplying the header or setting it to false results in a
+RULE_TAX_YEAR_NOT_ENDED error for in-year submissions. E.g.
+
+::
+
+   $ ITSA_SUSPEND_TEMPORAL_VALIDATIONS="suspend-temporal-validations: true" ./itsa ...
+
 License
 =======
 
