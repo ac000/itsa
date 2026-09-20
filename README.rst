@@ -40,6 +40,7 @@ itsa currently supports the following actions
 -  Submit an End-of-Year Statement
 -  List/view tax calculations
 -  View an End-of-Year tax/nics estimate
+-  View/amend/delete individual losses & claims
 -  Add/view/amend savings accounts
 
 Currently it gets the required accounting data from a GNUCash SQLite
