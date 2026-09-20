@@ -96,6 +96,7 @@ static void disp_usage(void)
 	printf("    update-annual-summary <tax_year>\n");
 	printf("    submit-final-declaration <tax_year>\n");
 	printf("    list-calculations <tax_year> [calculation_type]\n");
+	printf("    amend-individual-losses-claims <tax_year>\n");
 	printf("    view-end-of-year-estimate <tax_year> <calculation_id>\n");
 	printf("    add-savings-account\n");
 	printf("    view-savings-accounts [tax_year]\n");
@@ -543,6 +544,141 @@ static void display_messages(const json_t *msgs_obj, const char *fmt,
 		printf(" [\n   %s: %s\n ]\n", json_string_value(id),
 		       json_string_value(text));
 	}
+}
+
+static int display_amend_individual_losses_claims(json_t *root)
+{
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+
+	if (!root)
+		return -1;
+
+	JKEY_FW = 36;
+	print_json_tree(root, bread_crumb, 0, NULL);
+
+	return 0;
+}
+
+static int amend_individual_losses_claims(int argc, char *argv[])
+{
+	ac_jsonw_t *jsonw;
+	json_t *json;
+	char tpath[] = "/tmp/.itsa_amend_individual_losses_claims.XXXXXX.json";
+	char *s __cleanup_free = NULL;
+	const char *jstr;
+	ssize_t bytes_wrote;
+	int ret = -1;
+	int tmpfd;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	jsonw = ac_jsonw_init();
+
+	ac_jsonw_add_object(jsonw, "claims");
+
+	ac_jsonw_add_object(jsonw, "carryBack");
+	ac_jsonw_add_real(jsonw, "previousYearGeneralIncome", 0.0, 2);
+	ac_jsonw_add_real(jsonw, "earlyYearLosses", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "carrySideways");
+	ac_jsonw_add_real(jsonw, "currentYearGeneralIncome", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "preferenceOrder");
+	ac_jsonw_add_str(jsonw, "applyFirst", "carry-sideways|carry-back");
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "carryForward");
+	ac_jsonw_add_real(jsonw, "currentYearLosses", 0.0, 2);
+	ac_jsonw_add_real(jsonw, "previousYearsLosses", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "losses");
+
+	ac_jsonw_add_real(jsonw, "broughtForwardLosses", 0.0, 2);
+
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_end(jsonw);
+
+	tmpfd = mkstemps(tpath, 5);
+	if (tmpfd == -1) {
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
+		return -1;
+	}
+
+	jstr = ac_jsonw_get(jsonw);
+	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
+	if (bytes_wrote == -1) {
+		printec("Couldn't write Amend Individual Losses & Claims JSON\n");
+		perror("write");
+		goto out_cleanup;
+	}
+	lseek(tmpfd, 0, SEEK_SET);
+
+again:
+	json = json_loadfd(tmpfd, 0, NULL);
+	lseek(tmpfd, 0, SEEK_SET);
+	display_amend_individual_losses_claims(json);
+	json_decref(json);
+	printf("\n");
+	printcc("Submit (s), Edit (e), Quit (Q)> ");
+	getstdin(&s);
+	if (!s)
+		goto again;
+
+	switch (*s) {
+	case 's':
+	case 'S': {
+		int err;
+		char *jbuf __cleanup_free;
+		const char *params[2];
+		struct mtd_dsrc_ctx dsctx = {
+			.data_src.fd = tmpfd,
+			.src_type = MTD_DATA_SRC_FD
+		};
+
+		params[0] = BUSINESS_ID;
+		params[1] = argv[2];
+
+		err = mtd_ep(MTD_API_EP_IL_AMEND, &dsctx, &jbuf, params);
+		if (err) {
+			printec("Failed to amend individual losses & claims. "
+				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			goto out_cleanup;
+		}
+
+		break;
+	}
+	case 'e':
+	case 'E': {
+		int err;
+
+		err = open_editor(tpath);
+		if (err)
+			goto out_cleanup;
+
+		goto again;
+	}
+	}
+
+	ret = 0;
+
+out_cleanup:
+	ac_jsonw_free(jsonw);
+
+	close(tmpfd);
+	unlink(tpath);
+
+	return ret;
 }
 
 static int view_end_of_year_estimate(int argc, char *argv[])
@@ -2175,6 +2311,8 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return final_declaration(argc, argv);
 	if (IS_CMD("list-calculations"))
 		return list_calculations(argc, argv);
+	if (IS_CMD("amend-individual-losses-claims"))
+		return amend_individual_losses_claims(argc, argv);
 	if (IS_CMD("view-end-of-year-estimate"))
 		return view_end_of_year_estimate(argc, argv);
 	if (IS_CMD("add-savings-account"))
