@@ -802,7 +802,7 @@ static void display_calculation_messages(const json_t *msgs)
 
 static void display_calculation(json_t *obj)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1];
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
 	json_t *tmp;
 	const json_t *msgs;
 
@@ -812,7 +812,6 @@ static void display_calculation(json_t *obj)
 	json_object_del(obj, "links");
 
 	JKEY_FW = 36;
-	memset(bread_crumb, 0, sizeof(char *) * MAX_BREAD_CRUMB_LVL);
 	print_json_tree(obj, bread_crumb, 0, NULL);
 	display_calculation_messages(msgs);
 }
