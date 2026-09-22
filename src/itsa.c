@@ -79,6 +79,13 @@ static bool is_prod_api;
 
 static int JKEY_FW;
 
+#define MAX_BREAD_CRUMB_LVL		16
+struct bread_crumb_ctx {
+	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1];
+	int level;
+	bool (*print_json_tree_cb)(const char *key, json_t *value);
+};
+
 static void disp_usage(void)
 {
 	printf("Version: %s\n", ITSA_VER);
@@ -448,10 +455,7 @@ static void print_bread_crumb(const char *bread_crumb[])
 	printc("#BOLD# %s#RST#\n", str);
 }
 
-#define MAX_BREAD_CRUMB_LVL		16
-static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
-			    bool (*print_json_tree_cb)(const char *key,
-						       json_t *value))
+static void print_json_tree(json_t *obj, struct bread_crumb_ctx *ctx)
 {
 	const char *key;
 	json_t *value;
@@ -462,19 +466,17 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 
 		switch (json_typeof(value)) {
 		case JSON_OBJECT:
-			bread_crumb[level] = key;
-			print_json_tree(value, bread_crumb, ++level,
-					print_json_tree_cb);
+			ctx->bread_crumb[ctx->level++] = key;
+			print_json_tree(value, ctx);
 			goto decr_level;
 		case JSON_ARRAY: {
 			json_t *aobj;
 			size_t index;
 			size_t size = json_array_size(value);
 
-			bread_crumb[level++] = key;
+			ctx->bread_crumb[ctx->level++] = key;
 			json_array_foreach(value, index, aobj) {
-				print_json_tree(aobj, bread_crumb, level,
-						print_json_tree_cb);
+				print_json_tree(aobj, ctx);
 				if (index < size - 1)
 					printf("\n");
 			}
@@ -503,14 +505,14 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 		}
 
 		if (!done_bread_crumb) {
-			print_bread_crumb(bread_crumb);
+			print_bread_crumb(ctx->bread_crumb);
 			done_bread_crumb = true;
 		}
 
-		if (print_json_tree_cb) {
+		if (ctx->print_json_tree_cb) {
 			bool printed;
 
-			printed = print_json_tree_cb(key, value);
+			printed = ctx->print_json_tree_cb(key, value);
 			if (printed)
 				continue;
 		}
@@ -518,8 +520,7 @@ static void print_json_tree(json_t *obj, const char *bread_crumb[], int level,
 		continue;
 
 decr_level:
-		level--;
-		bread_crumb[level] = NULL;
+		ctx->bread_crumb[--ctx->level] = NULL;
 		done_bread_crumb = false;
 	}
 }
@@ -586,7 +587,7 @@ static int view_individual_losses_claims(int argc, char *argv[])
 	json_t *result;
 	char *jbuf __cleanup_free = NULL;
 	const char *params[2];
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 	int err;
 
 	if (argc != 3) {
@@ -609,7 +610,7 @@ static int view_individual_losses_claims(int argc, char *argv[])
 	result = get_result_json(jbuf);
 
 	JKEY_FW = 32;
-	print_json_tree(result, bread_crumb, 0, NULL);
+	print_json_tree(result, &bctx);
 
 	json_decref(result);
 
@@ -618,13 +619,13 @@ static int view_individual_losses_claims(int argc, char *argv[])
 
 static int display_amend_individual_losses_claims(json_t *root)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 
 	if (!root)
 		return -1;
 
 	JKEY_FW = 36;
-	print_json_tree(root, bread_crumb, 0, NULL);
+	print_json_tree(root, &bctx);
 
 	return 0;
 }
@@ -757,7 +758,7 @@ static int view_end_of_year_estimate(int argc, char *argv[])
 	json_t *obj;
 	char *jbuf __cleanup_free = NULL;
 	const char *params[2];
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 	int err;
 
 	if (argc != 4) {
@@ -783,7 +784,7 @@ static int view_end_of_year_estimate(int argc, char *argv[])
 	printc("#BOLD# Summary#RST#:-\n");
 	obj = json_object_get(result, "calculation");
 	obj = json_object_get(obj, "endOfYearEstimate");
-	print_json_tree(obj, bread_crumb, 0, NULL);
+	print_json_tree(obj, &bctx);
 
 	json_decref(result);
 
@@ -802,7 +803,7 @@ static void display_calculation_messages(const json_t *msgs)
 
 static void display_calculation(json_t *obj)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 	json_t *tmp;
 	const json_t *msgs;
 
@@ -812,7 +813,7 @@ static void display_calculation(json_t *obj)
 	json_object_del(obj, "links");
 
 	JKEY_FW = 36;
-	print_json_tree(obj, bread_crumb, 0, NULL);
+	print_json_tree(obj, &bctx);
 	display_calculation_messages(msgs);
 }
 
@@ -961,13 +962,14 @@ static bool print_c4nic_excempt_type(const char *key, json_t *value)
 
 static int disp_annual_summary(json_t *root)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 
 	if (!root)
 		return -1;
 
 	JKEY_FW = 36;
-	print_json_tree(root, bread_crumb, 0, print_c4nic_excempt_type);
+	bctx.print_json_tree_cb = print_c4nic_excempt_type;
+	print_json_tree(root, &bctx);
 
 	return 0;
 }
@@ -1133,13 +1135,13 @@ static int update_annual_summary(int argc, char *argv[])
 
 static int display_bsas(json_t *root)
 {
-	const char *bread_crumb[MAX_BREAD_CRUMB_LVL + 1] = {};
+	struct bread_crumb_ctx bctx = {};
 
 	if (!root)
 		return -1;
 
 	JKEY_FW = 36;
-	print_json_tree(root, bread_crumb, 0, NULL);
+	print_json_tree(root, &bctx);
 
 	return 0;
 }
