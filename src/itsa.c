@@ -49,6 +49,8 @@
 
 #define TAX_YEAR_SZ		7
 
+#define tmpname(name) "/tmp/.itsa_" #name ".XXXXXX.json"
+
 #define INFO	"[#INFO#INFO#RST#] "
 #define FINAL_DECLARATION \
 INFO "Before you can submit the information displayed here in response\n"\
@@ -634,7 +636,7 @@ static int amend_individual_losses_claims(int argc, char *argv[])
 {
 	ac_jsonw_t *jsonw;
 	json_t *json;
-	char tpath[] = "/tmp/.itsa_amend_individual_losses_claims.XXXXXX.json";
+	char tpath[] = tmpname(amend_individual_losses_claims);
 	char *s __cleanup_free = NULL;
 	const char *jstr;
 	ssize_t bytes_wrote;
@@ -1024,7 +1026,7 @@ static int annual_summary(const char *tax_year)
 	json_t *result;
 	char *jbuf __cleanup_free;
 	char *s __cleanup_free = NULL;
-	char tpath[] = "/tmp/.itsa_annual_summary.XXXXXX.json";
+	char tpath[] = tmpname(annual_summary);
 	const char *params[2];
 	int tmpfd;
 	int ret = -1;
@@ -1153,7 +1155,7 @@ static int trigger_bsas(int argc, char *argv[])
 	char tyear[TAX_YEAR_SZ + 1];
 	char start_date[11];
 	char end_date[11];
-	char tpath[] = "/tmp/.itsa_trigger_bsas.XXXXXX.json";
+	char tpath[] = tmpname(trigger_bsas);
 	const char *jstr;
 	char *s __cleanup_free = NULL;
 	ssize_t bytes_wrote;
@@ -1834,7 +1836,7 @@ static int amend_savings_account(int argc, char *argv[])
 	json_t *amnt = json_real(0.0f);
 	char *jbuf __cleanup_free = NULL;
 	char *s __cleanup_free = NULL;
-	char tpath[] = "/tmp/.itsa_savings_account.XXXXXX.json";
+	char tpath[] = tmpname(savings_account);
 	const char *args[3] = {};
 	const char *params[2];
 	int tmpfd;
