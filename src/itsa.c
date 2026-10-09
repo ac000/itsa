@@ -1148,19 +1148,191 @@ static int display_bsas(json_t *root)
 	return 0;
 }
 
-static int trigger_bsas(int argc, char *argv[])
+static int submit_se_acct_adj_adjustments(const char **params)
 {
+	int ret = -1;
 	ac_jsonw_t *jsonw;
 	json_t *json;
+	char *s __cleanup_free = NULL;
+	const char *jstr;
+	char tpath[] = tmpname("accounting_adjustments");
+	ssize_t bytes_wrote;
+	int tmpfd;
+
+	tmpfd = mkstemps(tpath, 5);
+	if (tmpfd == -1) {
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
+		return -1;
+	}
+
+	jsonw = ac_jsonw_init();
+
+	ac_jsonw_add_object(jsonw, "income");
+	ac_jsonw_add_real(jsonw, "turnover", 0.0, 2);
+	ac_jsonw_add_real(jsonw, "other", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "expenses");
+	ac_jsonw_add_real(jsonw, "consolidatedExpenses", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_end(jsonw);
+
+	jstr = ac_jsonw_get(jsonw);
+	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
+	if (bytes_wrote == -1) {
+		printec("Couldn't write Accounting Adjustments JSON\n");
+		perror("write");
+		goto out_cleanup;
+	}
+	lseek(tmpfd, 0, SEEK_SET);
+
+	printf("\n");
+	printic("Submitting Accounting Adjustments for #BOLD#%s#RST#\n",
+		params[1]);
+
+again:
+	json = json_loadfd(tmpfd, 0, NULL);
+	lseek(tmpfd, 0, SEEK_SET);
+	display_bsas(json);
+	json_decref(json);
+	printf("\n");
+	printcc("Submit (s), Edit (e), Quit (Q)> ");
+	getstdin(&s);
+	if (!s)
+		goto again;
+
+	switch (*s) {
+	case 's':
+	case 'S': {
+		int err;
+		char *jbuf __cleanup_free;
+		struct mtd_dsrc_ctx dsctx = {
+			.data_src.fd = tmpfd,
+			.src_type = MTD_DATA_SRC_FD
+		};
+
+		err = mtd_ep(MTD_API_EP_BSAS_SE_SUBMIT, &dsctx, &jbuf, params);
+		if (err) {
+			printec("Failed to submit Self-Employment Accounting Adjustments"
+				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			goto out_cleanup;
+		}
+
+		printsc("Accounting Adjustments submitted\n");
+
+		ret = 0;
+
+		break;
+	}
+	case 'e':
+	case 'E': {
+		int err;
+
+		err = open_editor(tpath);
+		if (err)
+			goto out_cleanup;
+
+		goto again;
+	}
+	default:
+		ret = 0;
+	}
+
+out_cleanup:
+	ac_jsonw_free(jsonw);
+
+	close(tmpfd);
+	unlink(tpath);
+
+	return ret;
+}
+
+static int submit_se_acct_adj_none(const char **params)
+{
+	int ret = 0;
+	int err;
+	ac_jsonw_t *jsonw;
+	json_t *json;
+	char *s __cleanup_free = NULL;
+	char *jbuf __cleanup_free = NULL;
+	struct mtd_dsrc_ctx dsctx;
+
+	jsonw = ac_jsonw_init();
+	ac_jsonw_add_bool(jsonw, "zeroAdjustments", true);
+	ac_jsonw_end(jsonw);
+
+	printf("\n");
+	printic("Submitting Accounting Adjustments for #BOLD#%s#RST#\n",
+		params[1]);
+
+	json = json_loads(ac_jsonw_get(jsonw), 0, NULL);
+	display_bsas(json);
+	json_decref(json);
+
+	printf("\n");
+	printcc("Submit (s), Quit (Q)> ");
+	getstdin(&s);
+	if (!s || (*s | 0x20) != 's')
+		goto out_cleanup;
+
+	dsctx.src_type = MTD_DATA_SRC_BUF;
+	dsctx.data_src.buf = ac_jsonw_get(jsonw);
+	dsctx.data_len = strlen(dsctx.data_src.buf);
+
+	err = mtd_ep(MTD_API_EP_BSAS_SE_SUBMIT, &dsctx, &jbuf, params);
+	if (err) {
+		printec("Failed to submit Self-Employment Accounting Adjustments. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		ret = -1;
+		goto out_cleanup;
+	}
+
+	printsc("Accounting Adjustments submitted\n");
+
+out_cleanup:
+	ac_jsonw_free(jsonw);
+
+	return ret;
+}
+
+static int submit_se_acct_adj(const char *cid, const char *tyear)
+{
+	const char *params[2];
+	char *s __cleanup_free = NULL;
+
+	params[0] = cid;
+	params[1] = tyear;
+
+	printcc("Do you wish to make any adjustments? No (n), Yes (y), Quit (Q)> ");
+	getstdin(&s);
+	if (!s || (*s | 0x20) == 'q')
+		return 0;
+	if ((*s | 0x20) == 'n')
+		return submit_se_acct_adj_none(params);
+	if ((*s | 0x20) == 'y')
+		return submit_se_acct_adj_adjustments(params);
+
+	return 0;
+}
+
+static int trigger_bsas(int argc, char *argv[])
+{
+	int ret = 0;
+	int err;
+	ac_jsonw_t *jsonw;
+	json_t *json;
+	json_t *result;
+	json_t *cid_obj;
 	char tyear[TAX_YEAR_SZ + 1];
 	char start_date[11];
 	char end_date[11];
-	char tpath[] = tmpname("trigger_bsas");
-	const char *jstr;
+	const char *cid;
 	char *s __cleanup_free = NULL;
-	ssize_t bytes_wrote;
-	int ret = -1;
-	int tmpfd;
+	char *jbuf __cleanup_free = NULL;
+	struct mtd_dsrc_ctx dsctx;
 
 	if (argc != 2 && argc != 4) {
 		disp_usage();
@@ -1181,14 +1353,6 @@ static int trigger_bsas(int argc, char *argv[])
 		snprintf(end_date, sizeof(end_date), "%s", argv[3]);
 	}
 
-	tmpfd = mkstemps(tpath, 5);
-	if (tmpfd == -1) {
-		printec("Couldn't create temporary file '%s' in %s\n",
-			tpath, __func__);
-		perror("mkstemps");
-		return -1;
-	}
-
 	jsonw = ac_jsonw_init();
 
 	ac_jsonw_add_object(jsonw, "accountingPeriod");
@@ -1201,78 +1365,48 @@ static int trigger_bsas(int argc, char *argv[])
 
 	ac_jsonw_end(jsonw);
 
-	jstr = ac_jsonw_get(jsonw);
-	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
-	if (bytes_wrote == -1) {
-		printec("Couldn't write BSAS JSON\n");
-		perror("write");
-		goto out_cleanup;
-	}
-	lseek(tmpfd, 0, SEEK_SET);
-
 	printic("Trigger a Business Source Adjustable Summary\n");
 
-again:
-	json = json_loadfd(tmpfd, 0, NULL);
-	lseek(tmpfd, 0, SEEK_SET);
+	json = json_loads(ac_jsonw_get(jsonw), 0, NULL);
 	display_bsas(json);
 	json_decref(json);
+
 	printf("\n");
-	printcc("Submit (s), Edit (e), Quit (Q)> ");
+	printcc("Submit (s), Quit (Q)> ");
 	getstdin(&s);
-	if (!s)
-		goto again;
+	if (!s || (*s | 0x20) != 's')
+		goto out_cleanup;
 
-	switch (*s) {
-	case 's':
-	case 'S': {
-		int err;
-		json_t *result;
-		json_t *cid_obj;
-		const char *cid;
-		char *jbuf __cleanup_free;
-		struct mtd_dsrc_ctx dsctx = {
-			.data_src.fd = tmpfd,
-			.src_type = MTD_DATA_SRC_FD
-		};
+	dsctx.src_type = MTD_DATA_SRC_BUF;
+	dsctx.data_src.buf = ac_jsonw_get(jsonw);
+	dsctx.data_len = strlen(dsctx.data_src.buf);
 
-		err = mtd_ep(MTD_API_EP_BSAS_TRIGGER, &dsctx, &jbuf, NULL);
-		if (err) {
-			printec("Failed to trigger Business Source Adjustable Summary. "
-				"(%s)\n%s\n", mtd_err2str(err), jbuf);
-			goto out_cleanup;
-		}
+	err = mtd_ep(MTD_API_EP_BSAS_TRIGGER, &dsctx, &jbuf, NULL);
+	if (err) {
+		printec("Failed to trigger Business Source Adjustable Summary. "
+			"(%s)\n%s\n", mtd_err2str(err), jbuf);
+		ret = -1;
+		goto out_cleanup;
+	}
 
-		result = get_result_json(jbuf);
-		cid_obj = json_object_get(result, "calculationId");
-		cid = json_string_value(cid_obj);
+	result = get_result_json(jbuf);
+	cid_obj = json_object_get(result, "calculationId");
 
-		printsc("BSAS calculationId: #BOLD#%s#RST#\n",
-			cid ? : "(null)");
-
+	cid = json_string_value(cid_obj);
+	if (!cid) {
+		printec("BSAS calculationId is #BOLD#NULL#RST#\n");
 		json_decref(result);
-
-		break;
-	}
-	case 'e':
-	case 'E': {
-		int err;
-
-		err = open_editor(tpath);
-		if (err)
-			goto out_cleanup;
-
-		goto again;
-	}
+		ret = -1;
+		goto out_cleanup;
 	}
 
-	ret = 0;
+	get_tax_year(start_date, tyear);
+	ret = submit_se_acct_adj(cid, tyear);
+
+	json_decref(result);
 
 out_cleanup:
 	ac_jsonw_free(jsonw);
-
-	close(tmpfd);
-	unlink(tpath);
 
 	return ret;
 }
