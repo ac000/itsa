@@ -214,10 +214,11 @@ static const char *get_editor(void)
 }
 
 extern char **environ;
-static int open_editor(const char *path)
+static int edit_file(const char *path, int *fd)
 {
 	const char *args[3] = { get_editor(), path, NULL };
 	pid_t child_pid;
+	struct stat sb;
 	int status;
 	int err;
 
@@ -226,13 +227,44 @@ static int open_editor(const char *path)
 	if (err) {
 		printec("Failed to open editor '%s': %s\n", args[0],
 			strerror(err));
-		return -1;
+		goto out_close_err;
 	}
 
 	while (waitpid(child_pid, &status, 0) == -1 && errno == EINTR)
 		;
 
+	/* The editor may have replaced the file, so reopen it. */
+	close(*fd);
+
+	*fd = open(path, O_RDWR|O_NOFOLLOW);
+	if (*fd == -1) {
+		printec("Failed to reopen '%s': %s\n", path, strerror(errno));
+		return -1;
+	}
+
+	err = fstat(*fd, &sb);
+	if (err) {
+		printec("Failed to reopen '%s': %s\n", path, strerror(errno));
+		goto out_close_err;
+	}
+
+	if (!S_ISREG(sb.st_mode)) {
+		printec("Failed to reopen '%s'. Not a regular file\n", path);
+		goto out_close_err;
+	}
+
+	if (sb.st_uid != geteuid()) {
+	    printec("Failed to reopen '%s'. Not owner of file\n", path);
+	    goto out_close_err;
+	}
+
 	return 0;
+
+out_close_err:
+	close(*fd);
+	*fd = -1;
+
+	return -1;
 }
 
 static json_t *get_result_json(const char *buf)
@@ -735,7 +767,7 @@ again:
 	case 'E': {
 		int err;
 
-		err = open_editor(tpath);
+		err = edit_file(tpath, &tmpfd);
 		if (err)
 			goto out_cleanup;
 
@@ -1096,7 +1128,7 @@ again:
 	}
 	case 'e':
 	case 'E': {
-		err = open_editor(tpath);
+		err = edit_file(tpath, &tmpfd);
 		if (err)
 			goto out_free_json;
 
@@ -1231,7 +1263,7 @@ again:
 	case 'E': {
 		int err;
 
-		err = open_editor(tpath);
+		err = edit_file(tpath, &tmpfd);
 		if (err)
 			goto out_cleanup;
 
@@ -2028,7 +2060,7 @@ static int amend_savings_account(int argc, char *argv[])
 	json_dumpfd(result, tmpfd, JSON_INDENT(4));
 	lseek(tmpfd, 0, SEEK_SET);
 
-	err = open_editor(tpath);
+	err = edit_file(tpath, &tmpfd);
 	if (err)
 		goto out_close_tmpfd;
 
