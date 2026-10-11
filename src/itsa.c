@@ -155,7 +155,7 @@ static inline ssize_t getstdin(char **lineptr)
 	return sz;
 }
 
-static ssize_t xwrite(int fd, const void *buf, size_t count)
+static ssize_t xpwrite0(int fd, const void *buf, size_t count)
 {
 	size_t total = 0;
 
@@ -165,7 +165,7 @@ static ssize_t xwrite(int fd, const void *buf, size_t count)
 	}
 
 	while (total < count) {
-		ssize_t bytes = write(fd, buf + total, count - total);
+		ssize_t bytes = pwrite(fd, buf + total, count - total, total);
 
 		if (bytes == -1) {
 			if (errno == EINTR)
@@ -721,10 +721,10 @@ static int amend_individual_losses_claims(int argc, char *argv[])
 	}
 
 	jstr = ac_jsonw_get(jsonw);
-	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
+	bytes_wrote = xpwrite0(tmpfd, jstr, strlen(jstr));
 	if (bytes_wrote == -1) {
 		printec("Couldn't write Amend Individual Losses & Claims JSON\n");
-		perror("write");
+		perror("pwrite");
 		goto out_cleanup;
 	}
 	lseek(tmpfd, 0, SEEK_SET);
@@ -1213,10 +1213,10 @@ static int submit_se_acct_adj_adjustments(const char **params)
 	ac_jsonw_end(jsonw);
 
 	jstr = ac_jsonw_get(jsonw);
-	bytes_wrote = xwrite(tmpfd, jstr, strlen(jstr));
+	bytes_wrote = xpwrite0(tmpfd, jstr, strlen(jstr));
 	if (bytes_wrote == -1) {
 		printec("Couldn't write Accounting Adjustments JSON\n");
-		perror("write");
+		perror("pwrite");
 		goto out_cleanup;
 	}
 	lseek(tmpfd, 0, SEEK_SET);
