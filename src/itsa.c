@@ -727,7 +727,6 @@ static int amend_individual_losses_claims(int argc, char *argv[])
 		perror("pwrite");
 		goto out_cleanup;
 	}
-	lseek(tmpfd, 0, SEEK_SET);
 
 again:
 	json = json_loadfd(tmpfd, 0, NULL);
@@ -1219,7 +1218,6 @@ static int submit_se_acct_adj_adjustments(const char **params)
 		perror("pwrite");
 		goto out_cleanup;
 	}
-	lseek(tmpfd, 0, SEEK_SET);
 
 	printf("\n");
 	printic("Submitting Accounting Adjustments for #BOLD#%s#RST#\n",
