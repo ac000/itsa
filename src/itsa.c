@@ -108,6 +108,9 @@ static void disp_usage(void)
 	printf("    delete-individual-losses-claims <tax_year>\n");
 	printf("    view-individual-losses-claims <tax_year>\n");
 	printf("    amend-individual-losses-claims <tax_year>\n");
+	printf("    delete-tax-liability-adjustments <tax_year>\n");
+	printf("    view-tax-liability-adjustments <tax_year>\n");
+	printf("    amend-tax-liability-adjustments <tax_year>\n");
 	printf("    view-end-of-year-estimate <tax_year> <calculation_id>\n");
 	printf("    add-savings-account\n");
 	printf("    view-savings-accounts [tax_year]\n");
@@ -759,6 +762,180 @@ again:
 				"(%s)\n%s\n", mtd_err2str(err), jbuf);
 			goto out_cleanup;
 		}
+
+		break;
+	}
+	case 'e':
+	case 'E': {
+		int err;
+
+		err = edit_file(tpath, &tmpfd);
+		if (err)
+			goto out_cleanup;
+
+		goto again;
+	}
+	}
+
+	ret = 0;
+
+out_cleanup:
+	ac_jsonw_free(jsonw);
+
+	close(tmpfd);
+	unlink(tpath);
+
+	return ret;
+}
+
+static int delete_tax_liability_adjustments(int argc, char *argv[])
+{
+	char *jbuf __cleanup_free = NULL;
+	char *s __cleanup_free = NULL;
+	const char *params[1];
+	int err;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	printcc("Are you sure? (N/y)> ");
+	getstdin(&s);
+	if (!s || (*s | 0x20) != 'y')
+	    return 0;
+
+	params[0] = argv[2];	/* tax_year */
+
+	err = mtd_ep(MTD_API_EP_ITLA_DELETE, NULL, &jbuf, params);
+	if (err) {
+		printec("Failed to delete individual Tax liability adjustments. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		return -1;
+	}
+
+	printsc("Deleted individual Tax Liability Adjustments for #BOLD#%s#RST#\n",
+		argv[2]);
+
+	return 0;
+
+}
+
+static int view_tax_liability_adjustments(int argc, char *argv[])
+{
+	json_t *result;
+	char *jbuf __cleanup_free = NULL;
+	const char *params[1];
+	struct bread_crumb_ctx bctx = {};
+	int err;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	params[0] = argv[2];	/* tax_year */
+
+	err = mtd_ep(MTD_API_EP_ITLA_GET, NULL, &jbuf, params);
+	if (err) {
+		printec("Couldn't get individual Tax liability adjustments. (%s)\n%s\n",
+			mtd_err2str(err), jbuf);
+		return -1;
+	}
+
+	printsc("Individual Tax Liability Adjustments for #BOLD#%s#RST#\n",
+		argv[2]);
+
+	result = get_result_json(jbuf);
+
+	JKEY_FW = 32;
+	print_json_tree(result, &bctx);
+
+	json_decref(result);
+
+	return 0;
+}
+
+#define display_amend_tax_liability_adjustments display_amend_individual_losses_claims
+static int amend_tax_liability_adjustments(int argc, char *argv[])
+{
+	ac_jsonw_t *jsonw;
+	json_t *json;
+	char tpath[] = tmpname("amend_individual_tax_liability_adjustments");
+	char *s __cleanup_free = NULL;
+	const char *jstr;
+	ssize_t bytes_wrote;
+	int ret = -1;
+	int tmpfd;
+
+	if (argc != 3) {
+		disp_usage();
+		return -1;
+	}
+
+	jsonw = ac_jsonw_init();
+
+	ac_jsonw_add_object(jsonw, "carryBackLossesDecrease");
+	ac_jsonw_add_real(jsonw, "incomeTax", 0.0, 2);
+	ac_jsonw_add_real(jsonw, "class4", 0.0, 2);
+	ac_jsonw_add_real(jsonw, "capitalGainsTax", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_add_object(jsonw, "taxRefundedOrSetOff");
+	ac_jsonw_add_real(jsonw, "amount", 0.0, 2);
+	ac_jsonw_end_object(jsonw);
+
+	ac_jsonw_end(jsonw);
+
+	tmpfd = mkstemps(tpath, 5);
+	if (tmpfd == -1) {
+		printec("Couldn't create temporary file '%s' in %s\n",
+			tpath, __func__);
+		perror("mkstemps");
+		return -1;
+	}
+
+	jstr = ac_jsonw_get(jsonw);
+	bytes_wrote = xpwrite0(tmpfd, jstr, strlen(jstr));
+	if (bytes_wrote == -1) {
+		printec("Couldn't write Amend Individual Tax Liability Adjustments JSON\n");
+		perror("pwrite");
+		goto out_cleanup;
+	}
+
+again:
+	json = json_loadfd(tmpfd, 0, NULL);
+	lseek(tmpfd, 0, SEEK_SET);
+	display_amend_tax_liability_adjustments(json);
+	json_decref(json);
+	printf("\n");
+	printcc("Submit (s), Edit (e), Quit (Q)> ");
+	getstdin(&s);
+	if (!s)
+		goto again;
+
+	switch (*s) {
+	case 's':
+	case 'S': {
+		int err;
+		char *jbuf __cleanup_free;
+		const char *params[1];
+		struct mtd_dsrc_ctx dsctx = {
+			.data_src.fd = tmpfd,
+			.src_type = MTD_DATA_SRC_FD
+		};
+
+		params[0] = argv[2];
+
+		err = mtd_ep(MTD_API_EP_ITLA_UPDATE, &dsctx, &jbuf, params);
+		if (err) {
+			printec("Failed to amend individual Tax liability adjustments. "
+				"(%s)\n%s\n", mtd_err2str(err), jbuf);
+			goto out_cleanup;
+		}
+
+		printsc("Amended individual Tax Liability Adjustments for #BOLD#%s#RST#\n",
+			argv[2]);
 
 		break;
 	}
@@ -2554,6 +2731,12 @@ static int dispatcher(int argc, char *argv[], const struct mtd_cfg *cfg)
 		return view_individual_losses_claims(argc, argv);
 	if (IS_CMD("amend-individual-losses-claims"))
 		return amend_individual_losses_claims(argc, argv);
+	if (IS_CMD("delete-tax-liability-adjustments"))
+		return delete_tax_liability_adjustments(argc, argv);
+	if (IS_CMD("view-tax-liability-adjustments"))
+		return view_tax_liability_adjustments(argc, argv);
+	if (IS_CMD("amend-tax-liability-adjustments"))
+		return amend_tax_liability_adjustments(argc, argv);
 	if (IS_CMD("view-end-of-year-estimate"))
 		return view_end_of_year_estimate(argc, argv);
 	if (IS_CMD("add-savings-account"))

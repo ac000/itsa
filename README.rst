@@ -41,6 +41,7 @@ itsa currently supports the following actions
 -  List/view tax calculations
 -  View an End-of-Year tax/nics estimate
 -  View/amend/delete individual losses & claims
+-  View/amend/delete individual Tax liability adjustments
 -  Add/view/amend savings accounts
 
 Currently it gets the required accounting data from a GNUCash SQLite
@@ -206,6 +207,9 @@ itsa currently supports the following commands
        delete-individual-losses-claims <tax_year>
        view-individual-losses-claims <tax_year>
        amend-individual-losses-claims <tax_year>
+       delete-tax-liability-adjustments <tax_year>
+       view-tax-liability-adjustments <tax_year>
+       amend-tax-liability-adjustments <tax_year>
        view-end-of-year-estimate <tax_year> <calculation_id>
        add-savings-account
        view-savings-accounts [tax_year]
