@@ -763,6 +763,9 @@ again:
 			goto out_cleanup;
 		}
 
+		printsc("Amended individual losses & claims for #BOLD#%s#RST#\n",
+			argv[2]);
+
 		break;
 	}
 	case 'e':
